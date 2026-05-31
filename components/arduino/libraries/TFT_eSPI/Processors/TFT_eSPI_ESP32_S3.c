@@ -352,7 +352,7 @@ void TFT_eSPI::pushSwapBytePixels(const void* data_in, uint32_t len){
 
   if (len)
   {
-    while (READ_PERI_REG(SPI_CMD_REG(SPI_PORT))&SPI_USR);
+    TFT_SPI_WAIT_USR();
     WRITE_PERI_REG(SPI_MOSI_DLEN_REG(SPI_PORT), (len << 4) - 1);
     for (uint32_t i=0; i <= (len<<1); i+=4) {
       WRITE_PERI_REG(SPI_W0_REG(SPI_PORT)+i, DAT8TO32(data)); data+=4;
@@ -363,7 +363,7 @@ void TFT_eSPI::pushSwapBytePixels(const void* data_in, uint32_t len){
 #endif
     SET_PERI_REG_MASK(SPI_CMD_REG(SPI_PORT), SPI_USR);
   }
-  while (READ_PERI_REG(SPI_CMD_REG(SPI_PORT))&SPI_USR);
+  TFT_SPI_WAIT_USR();
 
 }
 
@@ -385,7 +385,7 @@ void TFT_eSPI::pushPixels(const void* data_in, uint32_t len){
     WRITE_PERI_REG(SPI_MOSI_DLEN_REG(SPI_PORT), 511);
     while(len>31)
     {
-      while (READ_PERI_REG(SPI_CMD_REG(SPI_PORT))&SPI_USR);
+      TFT_SPI_WAIT_USR();
       WRITE_PERI_REG(SPI_W0_REG(SPI_PORT),  *data++);
       WRITE_PERI_REG(SPI_W1_REG(SPI_PORT),  *data++);
       WRITE_PERI_REG(SPI_W2_REG(SPI_PORT),  *data++);
@@ -413,7 +413,7 @@ void TFT_eSPI::pushPixels(const void* data_in, uint32_t len){
 
   if (len)
   {
-    while (READ_PERI_REG(SPI_CMD_REG(SPI_PORT))&SPI_USR);
+    TFT_SPI_WAIT_USR();
     WRITE_PERI_REG(SPI_MOSI_DLEN_REG(SPI_PORT), (len << 4) - 1);
     for (uint32_t i=0; i <= (len<<1); i+=4) WRITE_PERI_REG((SPI_W0_REG(SPI_PORT) + i), *data++);
 #if CONFIG_IDF_TARGET_ESP32S3
@@ -422,7 +422,7 @@ void TFT_eSPI::pushPixels(const void* data_in, uint32_t len){
 #endif
     SET_PERI_REG_MASK(SPI_CMD_REG(SPI_PORT), SPI_USR);
   }
-  while (READ_PERI_REG(SPI_CMD_REG(SPI_PORT))&SPI_USR);
+  TFT_SPI_WAIT_USR();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////

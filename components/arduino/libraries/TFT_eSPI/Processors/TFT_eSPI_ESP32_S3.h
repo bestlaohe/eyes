@@ -71,7 +71,8 @@ SPI3_HOST = 2
   #ifdef CONFIG_IDF_TARGET_ESP32
     #define SPI_PORT HSPI  //HSPI is port 2 on ESP32
   #else
-    #define SPI_PORT 3     //HSPI is port 3 on ESP32 S2
+    #define SPI_PORT 3     //HSPI is port 3 on ESP32 S2/S3
+    #define TFT_SKIP_SPI_TRANSACTION  // register bitbang; avoid Arduino SPI transaction deadlock
   #endif
 #elif defined(USE_FSPI_PORT)
     #define SPI_PORT 2 //FSPI(ESP32 S2)
@@ -144,7 +145,22 @@ SPI3_HOST = 2
 #if defined(TFT_PARALLEL_8_BIT)
   #define SPI_BUSY_CHECK
 #else
-  #define SPI_BUSY_CHECK while (*_spi_cmd&SPI_USR)
+  #define TFT_SPI_USR_TIMEOUT 500000UL
+  static inline void tft_spi_wait_usr(void) {
+    uint32_t t = 0;
+    while (*_spi_cmd & SPI_USR) {
+      if (++t > TFT_SPI_USR_TIMEOUT) {
+        CLEAR_PERI_REG_MASK(SPI_CMD_REG(SPI_PORT), SPI_USR);
+#if CONFIG_IDF_TARGET_ESP32S3
+        SET_PERI_REG_MASK(SPI_CMD_REG(SPI_PORT), SPI_UPDATE);
+        while (READ_PERI_REG(SPI_CMD_REG(SPI_PORT)) & SPI_UPDATE) { }
+#endif
+        break;
+      }
+    }
+  }
+  #define SPI_BUSY_CHECK tft_spi_wait_usr()
+  #define TFT_SPI_WAIT_USR() tft_spi_wait_usr()
 #endif
 
 // If smooth font is used then it is likely SPIFFS will be needed

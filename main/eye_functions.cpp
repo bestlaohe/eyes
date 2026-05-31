@@ -24,6 +24,7 @@
 //--------------------------------------------------------------------------
 
 #include <math.h>
+#include "esp_task_wdt.h"
 #include "eyes_common.h"
 
 #if !defined(LIGHT_PIN) || (LIGHT_PIN < 0)
@@ -47,7 +48,7 @@ void initEyes(void)
     eye[e].yposition   = eyeInfo[e].yposition;
 
     pinMode(eye[e].tft_cs, OUTPUT);
-    digitalWrite(eye[e].tft_cs, LOW);
+    digitalWrite(eye[e].tft_cs, HIGH);
 
     // Also set up an individual eye-wink pin if defined:
     if (eyeInfo[e].wink >= 0) pinMode(eyeInfo[e].wink, INPUT_PULLUP);
@@ -93,58 +94,44 @@ void updateEye (void)
 #endif // LIGHT_PIN
 }
 
-// EYE-RENDERING FUNCTION --------------------------------------------------
-void drawEye( // Renders one eye.  Inputs must be pre-clipped & valid.
-  // Use native 32 bit variables where possible as this is 10% faster!
-  uint8_t  e,       // Eye array index; 0 or 1 for left/right
-  uint32_t iScale,  // Scale factor for iris
-  uint32_t  scleraX, // First pixel X offset into sclera image
-  uint32_t  scleraY, // First pixel Y offset into sclera image
-  uint32_t  uT,      // Upper eyelid threshold value
-  uint32_t  lT) {    // Lower eyelid threshold value
-
-  uint32_t  screenX, screenY, scleraXsave;
+void drawEye(uint8_t e, uint32_t iScale, uint32_t scleraX, uint32_t scleraY,
+             uint32_t uT, uint32_t lT) {
+  uint32_t screenX, screenY, scleraXsave;
   int32_t  irisX, irisY;
-  uint32_t p, a;
-  uint32_t d;
-
+  uint32_t p, a, d;
   uint32_t pixels = 0;
 
-  // Set up raw pixel dump to entire screen.  Although such writes can wrap
-  // around automatically from end of rect back to beginning, the region is
-  // reset on each frame here in case of an SPI glitch.
   digitalWrite(eye[e].tft_cs, LOW);
   tft.startWrite();
   tft.setAddrWindow(eye[e].xposition, eye[e].yposition, 128, 128);
 
-  // Now just issue raw 16-bit values for every pixel...
-
-  scleraXsave = scleraX; // Save initial X value to reset on each line
+  scleraXsave = scleraX;
   irisY       = scleraY - (SCLERA_HEIGHT - IRIS_HEIGHT) / 2;
 
-  // Eyelid image is left<>right swapped for two displays
   uint16_t lidX = 0;
-  uint16_t dlidX = -1;
+  int16_t  dlidX = -1;
   if (e) dlidX = 1;
   for (screenY = 0; screenY < SCREEN_HEIGHT; screenY++, scleraY++, irisY++) {
     scleraX = scleraXsave;
     irisX   = scleraXsave - (SCLERA_WIDTH - IRIS_WIDTH) / 2;
-    if (e) lidX = 0; else lidX = SCREEN_WIDTH - 1;
-    for (screenX = 0; screenX < SCREEN_WIDTH; screenX++, scleraX++, irisX++, lidX += dlidX) {
+    if (e) lidX = 0;
+    else lidX = SCREEN_WIDTH - 1;
+    for (screenX = 0; screenX < SCREEN_WIDTH;
+         screenX++, scleraX++, irisX++, lidX += dlidX) {
       if ((pgm_read_byte(lower + screenY * SCREEN_WIDTH + lidX) <= lT) ||
-          (pgm_read_byte(upper + screenY * SCREEN_WIDTH + lidX) <= uT)) {              // Covered by eyelid
+          (pgm_read_byte(upper + screenY * SCREEN_WIDTH + lidX) <= uT)) {
         p = 0;
       } else if ((irisY < 0) || (irisY >= IRIS_HEIGHT) ||
-                 (irisX < 0) || (irisX >= IRIS_WIDTH)) { // In sclera
+                 (irisX < 0) || (irisX >= IRIS_WIDTH)) {
         p = pgm_read_word(sclera + scleraY * SCLERA_WIDTH + scleraX);
-      } else {                                          // Maybe iris...
-        p = pgm_read_word(polar + irisY * IRIS_WIDTH + irisX);                        // Polar angle/dist
-        d = (iScale * (p & 0x7F)) / 128;                // Distance (Y)
-        if (d < IRIS_MAP_HEIGHT) {                      // Within iris area
-          a = (IRIS_MAP_WIDTH * (p >> 7)) / 512;        // Angle (X)
-          p = pgm_read_word(iris + d * IRIS_MAP_WIDTH + a);                           // Pixel = iris
-        } else {                                        // Not in iris
-          p = pgm_read_word(sclera + scleraY * SCLERA_WIDTH + scleraX);               // Pixel = sclera
+      } else {
+        p = pgm_read_word(polar + irisY * IRIS_WIDTH + irisX);
+        d = (iScale * (p & 0x7F)) / 128;
+        if (d < IRIS_MAP_HEIGHT) {
+          a = (IRIS_MAP_WIDTH * (p >> 7)) / 512;
+          p = pgm_read_word(iris + d * IRIS_MAP_WIDTH + a);
+        } else {
+          p = pgm_read_word(sclera + scleraY * SCLERA_WIDTH + scleraX);
         }
       }
       *(&pbuffer[dmaBuf][0] + pixels++) = p >> 8 | p << 8;
@@ -153,9 +140,9 @@ void drawEye( // Renders one eye.  Inputs must be pre-clipped & valid.
         yield();
 #ifdef USE_DMA
         tft.pushPixelsDMA(&pbuffer[dmaBuf][0], pixels);
-        dmaBuf  = !dmaBuf;
+        dmaBuf = !dmaBuf;
 #else
-        tft.pushPixels(pbuffer, pixels);
+        tft.pushPixels(pbuffer[0], pixels);
 #endif
         pixels = 0;
       }
@@ -166,7 +153,7 @@ void drawEye( // Renders one eye.  Inputs must be pre-clipped & valid.
 #ifdef USE_DMA
     tft.pushPixelsDMA(&pbuffer[dmaBuf][0], pixels);
 #else
-    tft.pushPixels(pbuffer, pixels);
+    tft.pushPixels(pbuffer[0], pixels);
 #endif
   }
   tft.endWrite();
@@ -199,9 +186,9 @@ uint32_t timeOfLastBlink = 0L, timeToNextBlink = 0L;
 #endif
 
 // Process motion for a single frame of left or right eye
-void frame(uint16_t iScale) // Iris scale (0-1023)
+void frame(uint16_t iScale) // Iris scale (IRIS_MIN..IRIS_MAX)
 {
-  static uint32_t frames   = 0; // Used in frame rate calculation
+  static uint32_t frames   = 0;
   static uint8_t  eyeIndex = 0; // eye[] array counter
   int16_t         eyeX, eyeY;
   uint32_t        t = micros(); // Time at start of function
@@ -211,7 +198,7 @@ void frame(uint16_t iScale) // Iris scale (0-1023)
     if (elapsed) Serial.println((uint16_t)(frames / elapsed)); // Print FPS
   }
 
-  if (++eyeIndex >= NUM_EYES) eyeIndex = 0; // Cycle through eyes, 1 per call
+  if (++eyeIndex >= NUM_EYES) eyeIndex = 0; // Cycle through eyes, 1 per frame
 
   // X/Y movement
 
@@ -390,7 +377,6 @@ void frame(uint16_t iScale) // Iris scale (0-1023)
     n          = uThreshold;
   }
 
-  // Pass all the derived values to the eye-rendering function:
   drawEye(eyeIndex, iScale, eyeX, eyeY, n, lThreshold);
 
   if (eyeIndex == (NUM_EYES - 1)) {
@@ -426,7 +412,8 @@ void split( // Subdivides motion path into two sub-paths w/randimization
       v = startValue + (((endValue - startValue) * dt) / duration);
       if (v < IRIS_MIN)      v = IRIS_MIN; // Clip just in case
       else if (v > IRIS_MAX) v = IRIS_MAX;
-      frame(v);        // Draw frame w/interim iris scale value
+      frame(v);
+      esp_task_wdt_reset();
     }
   }
 }

@@ -4,6 +4,9 @@
 #include <SPI.h>
 #include <TFT_eSPI.h>
 
+// DMA 双缓冲推送像素，显著提升帧率（与 cateyes 一致）
+#define USE_DMA
+
 #define BUFFER_SIZE 1024
 
 #ifdef USE_DMA
