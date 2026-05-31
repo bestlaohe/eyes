@@ -1,0 +1,9 @@
+{
+    "idf.monitorBaudRate": "115200",
+    "idf.flashType": "UART",
+    "idf.portWin": "COM5",
+    "idf.espIdfPathWin": "C:\\path\\to\\esp-idf",
+    "idf.toolsPathWin": "C:\\Users\\YOU\\.espressif",
+    "idf.pythonInstallPath": "C:\\Users\\YOU\\.espressif\\tools\\idf-python\\3.11.2\\python.exe",
+    "idf.currentSetup": "C:\\path\\to\\esp-idf"
+}

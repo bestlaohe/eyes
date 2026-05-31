@@ -1,0 +1,52 @@
+# --- ESP-IDF build & config ---
+/build/
+/sdkconfig
+/sdkconfig.old
+/sdkconfig.ci
+/dependencies.lock.bak
+
+# Component Manager cache (restore with: idf.py build)
+/managed_components/
+
+# Keep: sdkconfig.defaults, dependencies.lock, partitions.csv
+
+# --- IDE & editor ---
+.vscode/
+!.vscode/extensions.json
+.idea/
+*.code-workspace
+.cache/
+.clangd
+*.swp
+*.swo
+*~
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# --- Secrets & local env ---
+.env
+.env.*
+*.pem
+*.key
+sdkconfig.*.local
+
+# --- Firmware binaries (build output) ---
+*.bin
+!components/**/bootloader*.bin
+
+# --- Logs & temp ---
+*.log
+/tmp/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+.Python
+.venv/
+venv/
+
+# --- Arduino component: downloaded toolchains (not source) ---
+components/arduino/tools/
