@@ -1,5 +1,7 @@
 #ifndef _TFT_CONFIG_H_
 #define _TFT_CONFIG_H_
+#define USE_DMA
+
 
 // BOE 0.71" GC9D01（160x160）
 // 使用 SPI3（HSPI），避免与 SPI2 上 Flash 总线冲突
@@ -19,6 +21,7 @@
 #define TFT_DC   36
 #define TFT_RST  40
 #define TFT_BL   35
+#define TOUCH_CS -1
 
 #define TFT_BACKLIGHT_ON HIGH  // 背光有效电平
 

@@ -5,7 +5,7 @@
 #include <TFT_eSPI.h>
 
 // DMA 双缓冲推送像素，显著提升帧率
-// #define USE_DMA
+#define USE_DMA
 
 #define BUFFER_SIZE 1024  // 像素缓冲大小，推荐 128-1024
 

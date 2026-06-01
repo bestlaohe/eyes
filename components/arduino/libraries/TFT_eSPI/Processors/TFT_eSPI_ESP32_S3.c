@@ -834,6 +834,7 @@ void IRAM_ATTR dma_end_callback(spi_transaction_t *spi_tx)
 ***************************************************************************************/
 bool TFT_eSPI::initDMA(bool ctrl_cs)
 {
+  Serial.println("initDMA开始");
   if (DMA_Enabled) return false;
 
   esp_err_t ret;
@@ -878,6 +879,7 @@ bool TFT_eSPI::initDMA(bool ctrl_cs)
 
   DMA_Enabled = true;
   spiBusyCheck = 0;
+  Serial.println("initDMA成功");
   return true;
 }
 

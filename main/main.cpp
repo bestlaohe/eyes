@@ -15,8 +15,6 @@ uint32_t startTime; // 用于 FPS 计算
 
 void setup(void) {
   Serial.begin(115200);
-  //while (!Serial);
-  Serial.println("开始");
 
 #if defined(DISPLAY_BACKLIGHT) && (DISPLAY_BACKLIGHT >= 0)
   // 启用背光引脚，最初关闭
