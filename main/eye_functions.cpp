@@ -385,12 +385,14 @@ void split(
   } else {             // 不再细分，执行瞳孔动画
     int32_t dt;        // 距运动开始的微秒数
     int16_t v;         // 中间插值
+    Serial.println("micros");
     while ((dt = (micros() - startTime)) < duration) {
       v = startValue + (((endValue - startValue) * dt) / duration);
       if (v < IRIS_MIN)      v = IRIS_MIN; // 安全裁剪
       else if (v > IRIS_MAX) v = IRIS_MAX;
+      Serial.printf("micros=%d\n", v);
       frame(v);
-      esp_task_wdt_reset(); // 防止 ESP-IDF 看门狗超时
+      Serial.println("micros");
     }
   }
 }
