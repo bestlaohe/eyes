@@ -872,14 +872,16 @@ bool TFT_eSPI::initDMA(bool ctrl_cs)
     .pre_cb = 0, //dc_callback, //Callback to handle D/C line (not used)
     .post_cb = dma_end_callback //Callback to end transmission
   };
+  Serial.println("initDMA成功1");
   ret = spi_bus_initialize(spi_host, &buscfg, DMA_CHANNEL);
   ESP_ERROR_CHECK(ret);
+  Serial.println("initDMA成功2");
   ret = spi_bus_add_device(spi_host, &devcfg, &dmaHAL);
   ESP_ERROR_CHECK(ret);
 
   DMA_Enabled = true;
   spiBusyCheck = 0;
-  Serial.println("initDMA成功");
+  Serial.println("initDMA成功3");
   return true;
 }
 
