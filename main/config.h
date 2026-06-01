@@ -40,7 +40,7 @@
 // 眼睛列表 ----------------------------------------------------------------
 #define NUM_EYES 1 // 要展示的眼睛数量（1或2）
 
-#define BLINK_PIN   47 // 手动眨眼按钮的引脚（ BOTH eyes）
+#define BLINK_PIN   47 // 手动眨眼按钮引脚（控制双眼）
 #define LH_WINK_PIN -1 // 左Wink引脚（设为-1表示没有引脚）
 #define RH_WINK_PIN -1 // 右Wink引脚（设为-1表示没有引脚）
 
