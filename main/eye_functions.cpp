@@ -72,11 +72,11 @@ void updateEye (void)
 #endif // IRIS_SMOOTH
 
 #else  // 自动瞳孔缩放 —— 调用递归 split 函数
-
+Serial.println("2222");
   newIris = random(IRIS_MIN, IRIS_MAX);
   split(oldIris, newIris, micros(), 10000000L, IRIS_MAX - IRIS_MIN);
   oldIris = newIris;
-
+  Serial.println("在动");
 #endif // LIGHT_PIN
 }
 

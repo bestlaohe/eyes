@@ -49,7 +49,6 @@ void setup(void) {
 
   Serial.begin(115200);
 
-  Serial.println("开始");
 
 
 
@@ -86,11 +85,12 @@ void setup(void) {
 #endif
 
   tft.init();
+  Serial.println("初始化显示器2");
 
   // tft.init() 会通过 TFT_BL 自动开背光，清屏前先关掉
   backlight_off();
 
-
+  Serial.println("初始化显示器3");
 
 #ifdef USE_DMA
 
@@ -98,7 +98,7 @@ void setup(void) {
 
 #endif
 
-
+Serial.println("初始化显示器6");
 
   // 将片选引脚拉高，以便可以单独配置各块显示器
   digitalWrite(eye[0].tft_cs, HIGH);
