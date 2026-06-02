@@ -61,11 +61,6 @@
   writedata(0x08);
   writedata(0x08);
 
-
-  writecommand(0xBA);
-  writedata(0x0A);
-
-
   writecommand(0xBD);
   writedata(0x06);
 
@@ -78,9 +73,9 @@
   writedata(0x04);
 
   writecommand(0xC3);
-  writedata(0x48);
+  writedata(0x13);
   writecommand(0xC4);
-  writedata(0x48);
+  writedata(0x13);
 
   writecommand(0xC9);
   writedata(0x22);
@@ -222,8 +217,6 @@
   writedata(0x00);
   writedata(0x4E);
   writedata(0x00);
-
-
 
   writecommand(0x98);
   writedata(0x3e);

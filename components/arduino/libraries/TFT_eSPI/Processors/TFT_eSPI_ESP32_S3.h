@@ -26,11 +26,10 @@
 // Fix IDF problems with ESP32S3
 // Note illogical enumerations: FSPI_HOST=SPI2_HOST=1   HSPI_HOST=SPI3_HOST=2
 #if CONFIG_IDF_TARGET_ESP32S3
-  // IDF 5.x soc.h defines REG_SPI_BASE(i) as 0 when i<2; Arduino FSPI=0 must map to host 2
-  #ifdef REG_SPI_BASE
-    #undef REG_SPI_BASE
+  // Fix ESP32C3 IDF bug for missing definition (FSPI only tested at the moment)
+  #ifndef REG_SPI_BASE //                      HSPI                 FSPI/VSPI
+    #define REG_SPI_BASE(i) (((i)>1) ? (DR_REG_SPI3_BASE) : (DR_REG_SPI2_BASE))
   #endif
-  #define REG_SPI_BASE(i) (((i)>=2) ? (DR_REG_SPI2_BASE + ((i)-2) * 0x1000) : (DR_REG_SPI2_BASE))
 
   // Fix ESP32S3 IDF bug for name change
   #ifndef SPI_MOSI_DLEN_REG
@@ -53,17 +52,14 @@ VSPI = 3, uses SPI3
 ESP32-S2:
 FSPI = 1, uses SPI2
 HSPI = 2, uses SPI3
-VSPI not defined
+VSPI not defined so have made VSPI = HSPI
 
-ESP32 C3:
-FSPI = 0, uses SPI2 ???? To be checked
-HSPI = 1, uses SPI3 ???? To be checked
-VSPI not defined
-
-For ESP32/S2/C3/S3:
-SPI1_HOST = 0
-SPI2_HOST = 1
-SPI3_HOST = 2
+For ESP32 C3, C5, C6, H2, P4, S2, S3:
+(C3 only SPI2 port is available, SPI0 & SPI1 are dedicated to internal flash memory)
+Confusingly in ESP-IDF enumerations are:
+SPI1_HOST = 0,  ///< actually SPI0
+SPI2_HOST = 1,  ///< actually SPI1
+SPI3_HOST = 2,  ///< actually SPI2
 */
 
 // ESP32 specific SPI port selection
@@ -71,8 +67,7 @@ SPI3_HOST = 2
   #ifdef CONFIG_IDF_TARGET_ESP32
     #define SPI_PORT HSPI  //HSPI is port 2 on ESP32
   #else
-    #define SPI_PORT 3     //HSPI is port 3 on ESP32 S2/S3
-    #define TFT_SKIP_SPI_TRANSACTION  // register bitbang; avoid Arduino SPI transaction deadlock
+    #define SPI_PORT 3     //HSPI is port 3 on ESP32 S2
   #endif
 #elif defined(USE_FSPI_PORT)
     #define SPI_PORT 2 //FSPI(ESP32 S2)
@@ -82,7 +77,7 @@ SPI3_HOST = 2
   #elif CONFIG_IDF_TARGET_ESP32S2
     #define SPI_PORT 2 //FSPI(ESP32 S2)
   #elif CONFIG_IDF_TARGET_ESP32S3
-    #define SPI_PORT 2  // SPI2_HOST (Arduino FSPI=0); REG_SPI_BASE needs index >= 2 in IDF 5.x
+    #define SPI_PORT 2
   #endif
 #endif
 
@@ -145,22 +140,7 @@ SPI3_HOST = 2
 #if defined(TFT_PARALLEL_8_BIT)
   #define SPI_BUSY_CHECK
 #else
-  #define TFT_SPI_USR_TIMEOUT 500000UL
-  static inline void tft_spi_wait_usr(void) {
-    uint32_t t = 0;
-    while (*_spi_cmd & SPI_USR) {
-      if (++t > TFT_SPI_USR_TIMEOUT) {
-        CLEAR_PERI_REG_MASK(SPI_CMD_REG(SPI_PORT), SPI_USR);
-#if CONFIG_IDF_TARGET_ESP32S3
-        SET_PERI_REG_MASK(SPI_CMD_REG(SPI_PORT), SPI_UPDATE);
-        while (READ_PERI_REG(SPI_CMD_REG(SPI_PORT)) & SPI_UPDATE) { }
-#endif
-        break;
-      }
-    }
-  }
-  #define SPI_BUSY_CHECK tft_spi_wait_usr()
-  #define TFT_SPI_WAIT_USR() tft_spi_wait_usr()
+  #define SPI_BUSY_CHECK while (*_spi_cmd&SPI_USR)
 #endif
 
 // If smooth font is used then it is likely SPIFFS will be needed
@@ -573,9 +553,9 @@ SPI3_HOST = 2
     #define TFT_WRITE_BITS(D, B) *_spi_mosi_dlen = B-1;  \
                                *_spi_w = D;              \
                                *_spi_cmd = SPI_UPDATE;   \
-                        while (*_spi_cmd & SPI_UPDATE){; } \
+                        while (*_spi_cmd & SPI_UPDATE);  \
                                *_spi_cmd = SPI_USR;      \
-                        while (*_spi_cmd & SPI_USR){;}
+                        while (*_spi_cmd & SPI_USR);
   #endif
   // Write 8 bits
   #define tft_Write_8(C) TFT_WRITE_BITS(C, 8)
@@ -592,7 +572,7 @@ SPI3_HOST = 2
     #define tft_Write_16N(C) *_spi_mosi_dlen = 16-1;    \
                            *_spi_w = ((C)<<8 | (C)>>8); \
                            *_spi_cmd = SPI_UPDATE;      \
-                    while (*_spi_cmd & SPI_UPDATE){;}     \
+                    while (*_spi_cmd & SPI_UPDATE);     \
                            *_spi_cmd = SPI_USR;
   #endif
 
