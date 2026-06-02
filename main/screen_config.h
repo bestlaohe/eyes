@@ -1,10 +1,8 @@
 #ifndef _TFT_CONFIG_H_
 #define _TFT_CONFIG_H_
-#define USE_DMA
-
 
 // BOE 0.71" GC9D01（160x160）
-// 使用 SPI3（HSPI），避免与 SPI2 上 Flash 总线冲突
+// ESP32-S3：DMA 须用 HSPI(SPI3)；MISO=-1 在 HSPI 下合法（FSPI 会误映射 MOSI 导致 init 卡死）
 // 引脚：BL=35  DC=36  CS=37  CL=38  DA=39  RST=40
 
 #define USER_SETUP_ID 471
@@ -21,6 +19,7 @@
 #define TFT_DC   36
 #define TFT_RST  40
 #define TFT_BL   35
+#define TFT_MISO -1   // 显示-only SPI，DMA 勿与 MOSI 共用 MISO
 #define TOUCH_CS -1
 
 #define TFT_BACKLIGHT_ON HIGH  // 背光有效电平

@@ -4,6 +4,11 @@
 
 // Temporarily a separate file to TFT_eSPI_ESP32.c until board package low level API stabilises
 
+#if defined(CONFIG_IDF_TARGET_ESP32S3)
+#include "esp_private/spi_common_internal.h"
+#endif
+
+
 ////////////////////////////////////////////////////////////////////////////////////////
 // Global variables
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -662,8 +667,9 @@ void TFT_eSPI::pushPixelsDMA(uint16_t* image, uint32_t len)
   trans.length = len * 16;        //Data length, in bits
   trans.flags = 0;                //SPI_TRANS_USE_TXDATA flag
 
+  WRITE_PERI_REG(SPI_DMA_CONF_REG(spi_host), 0x3);
   ret = spi_device_queue_trans(dmaHAL, &trans, portMAX_DELAY);
-  assert(ret == ESP_OK);
+  if (ret != ESP_OK) return;
 
   spiBusyCheck++;
 }
@@ -707,7 +713,7 @@ void TFT_eSPI::pushImageDMA(int32_t x, int32_t y, int32_t w, int32_t h, uint16_t
   trans.flags = 0;           //SPI_TRANS_USE_TXDATA flag
 
   ret = spi_device_queue_trans(dmaHAL, &trans, portMAX_DELAY);
-  assert(ret == ESP_OK);
+  if (ret != ESP_OK) return;
 
   spiBusyCheck++;
 }
@@ -795,7 +801,7 @@ void TFT_eSPI::pushImageDMA(int32_t x, int32_t y, int32_t w, int32_t h, uint16_t
   trans.flags = 0;           //SPI_TRANS_USE_TXDATA flag
 
   ret = spi_device_queue_trans(dmaHAL, &trans, portMAX_DELAY);
-  assert(ret == ESP_OK);
+  if (ret != ESP_OK) return;
 
   spiBusyCheck++;
 }
@@ -825,7 +831,8 @@ extern "C" void dma_end_callback();
 
 void IRAM_ATTR dma_end_callback(spi_transaction_t *spi_tx)
 {
-  WRITE_PERI_REG(SPI_DMA_CONF_REG(spi_host), 0);
+  // Keep SPI DMA TX/RX enabled for the next transfer (see Bodmer TFT_eSPI #2233)
+  WRITE_PERI_REG(SPI_DMA_CONF_REG(spi_host), 0x3);
 }
 
 /***************************************************************************************
@@ -834,24 +841,21 @@ void IRAM_ATTR dma_end_callback(spi_transaction_t *spi_tx)
 ***************************************************************************************/
 bool TFT_eSPI::initDMA(bool ctrl_cs)
 {
-  Serial.println("initDMA开始");
-  if (DMA_Enabled) return false;
+  if (DMA_Bus_Ready) return false;
+
+#if !defined(TFT_PARALLEL_8_BIT)
+  spi.end();
+#endif
 
   esp_err_t ret;
-  spi_bus_config_t buscfg = {
-    .mosi_io_num = TFT_MOSI,
-    .miso_io_num = TFT_MISO,
-    .sclk_io_num = TFT_SCLK,
-    .quadwp_io_num = -1,
-    .quadhd_io_num = -1,
-    .data4_io_num = -1,
-    .data5_io_num = -1,
-    .data6_io_num = -1,
-    .data7_io_num = -1,
-    .max_transfer_sz = 65536, // ESP32 S3 max size is 64Kbytes
-    .flags = 0,
-    .intr_flags = 0
-  };
+  spi_bus_config_t buscfg;
+  memset(&buscfg, 0, sizeof(buscfg));
+  buscfg.mosi_io_num = TFT_MOSI;
+  buscfg.miso_io_num = (TFT_MISO < 0) ? -1 : TFT_MISO;
+  buscfg.sclk_io_num = TFT_SCLK;
+  buscfg.quadwp_io_num = -1;
+  buscfg.quadhd_io_num = -1;
+  buscfg.max_transfer_sz = 4096;
 
   int8_t pin = -1;
   if (ctrl_cs) pin = TFT_CS;
@@ -867,22 +871,50 @@ bool TFT_eSPI::initDMA(bool ctrl_cs)
     .clock_speed_hz = SPI_FREQUENCY,
     .input_delay_ns = 0,
     .spics_io_num = pin,
-    .flags = SPI_DEVICE_NO_DUMMY, //0,
-    .queue_size = 1,            // Not using queues
-    .pre_cb = 0, //dc_callback, //Callback to handle D/C line (not used)
-    .post_cb = dma_end_callback //Callback to end transmission
+    .flags = SPI_DEVICE_NO_DUMMY | SPI_DEVICE_HALFDUPLEX,
+    .queue_size = 3,
+    .pre_cb = dc_callback,      // toggle DC during DMA (required for GC9D01 data)
+    .post_cb = dma_end_callback
   };
-  Serial.println("initDMA成功1");
-  ret = spi_bus_initialize(spi_host, &buscfg, DMA_CHANNEL);
-  ESP_ERROR_CHECK(ret);
-  Serial.println("initDMA成功2");
+  ret = spi_bus_initialize(spi_host, &buscfg, SPI_DMA_DISABLED);
+  if (ret == ESP_ERR_INVALID_STATE) {
+    // Bus already initialized
+  } else if (ret != ESP_OK) {
+    return false;
+  }
   ret = spi_bus_add_device(spi_host, &devcfg, &dmaHAL);
-  ESP_ERROR_CHECK(ret);
+  if (ret != ESP_OK) {
+    return false;
+  }
 
-  DMA_Enabled = true;
+  DMA_Bus_Ready = true;
   spiBusyCheck = 0;
-  Serial.println("initDMA成功3");
   return true;
+}
+
+/***************************************************************************************
+** Function name:           enableDmaEngine
+** Description:             Attach GDMA to SPI bus (after initDMA + short delay on ESP32-S3)
+***************************************************************************************/
+bool TFT_eSPI::enableDmaEngine(void)
+{
+#if defined(CONFIG_IDF_TARGET_ESP32S3)
+  if (!DMA_Bus_Ready) {
+    return false;
+  }
+  const spi_bus_attr_t *attr = spi_bus_get_attr(spi_host);
+  if (attr && attr->dma_enabled) {
+    DMA_Enabled = true;
+    return true;
+  }
+  if (spicommon_bus_enable_dma(spi_host, SPI_DMA_CH_AUTO) != ESP_OK) {
+    return false;
+  }
+  DMA_Enabled = true;
+  return true;
+#else
+  return DMA_Enabled;
+#endif
 }
 
 /***************************************************************************************
@@ -891,10 +923,11 @@ bool TFT_eSPI::initDMA(bool ctrl_cs)
 ***************************************************************************************/
 void TFT_eSPI::deInitDMA(void)
 {
-  if (!DMA_Enabled) return;
+  if (!DMA_Bus_Ready) return;
   spi_bus_remove_device(dmaHAL);
   spi_bus_free(spi_host);
   DMA_Enabled = false;
+  DMA_Bus_Ready = false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////

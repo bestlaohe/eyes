@@ -769,6 +769,7 @@ class TFT_eSPI : public Print { friend class TFT_eSprite; // Sprite class has ac
   bool     initDMA(bool ctrl_cs = false);  // Initialise the DMA engine and attach to SPI bus - typically used in setup()
                                            // Parameter "true" enables DMA engine control of TFT chip select (ESP32 only)
                                            // For ESP32 only, TFT reads will not work if parameter is true
+  bool     enableDmaEngine(void);          // ESP32-S3: enable GDMA after initDMA (call after brief delay)
   void     deInitDMA(void);   // De-initialise the DMA engine and detach from SPI bus - typically not used
 
            // Push an image to the TFT using DMA, buffer is optional and grabs (double buffers) a copy of the image
@@ -796,6 +797,7 @@ class TFT_eSPI : public Print { friend class TFT_eSprite; // Sprite class has ac
   void     dmaWait(void); // wait until DMA is complete
 
   bool     DMA_Enabled = false;   // Flag for DMA enabled state
+  bool     DMA_Bus_Ready = false; // ESP32-S3: IDF SPI bus up (GDMA may still be pending)
   uint8_t  spiBusyCheck = 0;      // Number of ESP32 transfer buffers to check
 
   // Bare metal functions

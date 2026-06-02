@@ -644,8 +644,14 @@ void TFT_eSPI::init(uint8_t tc)
 #else
   #if !defined(TFT_PARALLEL_8_BIT) && !defined(RP2040_PIO_INTERFACE)
     #if defined (TFT_MOSI) && !defined (TFT_SPI_OVERLAP) && !defined(ARDUINO_ARCH_RP2040) && !defined (ARDUINO_ARCH_MBED)
+      #if defined(ESP32_DMA)
+      if (!DMA_Enabled)  // initDMA() already installed the IDF SPI driver
+      #endif
       spi.begin(TFT_SCLK, TFT_MISO, TFT_MOSI, -1); // This will set MISO to input
     #else
+      #if defined(ESP32_DMA)
+      if (!DMA_Enabled)
+      #endif
       spi.begin(); // This will set MISO to input
     #endif
   #endif

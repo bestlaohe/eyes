@@ -132,13 +132,17 @@ void drawEye( // Renders one eye.  Inputs must be pre-clipped & valid.
           p = pgm_read_word(sclera + scleraY * SCLERA_WIDTH + scleraX);               // Pixel = sclera
         }
       }
-      *(&pbuffer[dmaBuf][0] + pixels++) = p >> 8 | p << 8;
+      pbuffer[dmaBuf][pixels++] = (uint16_t)(p >> 8 | p << 8);
 
       if (pixels >= BUFFER_SIZE) {
         yield();
 #ifdef USE_DMA
-        tft.pushPixelsDMA(&pbuffer[dmaBuf][0], pixels);
-        dmaBuf  = !dmaBuf;
+        if (tft.DMA_Enabled && pbuffer[dmaBuf]) {
+          tft.pushPixelsDMA(pbuffer[dmaBuf], pixels);
+          dmaBuf  = !dmaBuf;
+        } else if (pbuffer[dmaBuf]) {
+          tft.pushPixels(pbuffer[dmaBuf], pixels);
+        }
 #else
         tft.pushPixels(pbuffer, pixels);
 #endif
@@ -149,7 +153,11 @@ void drawEye( // Renders one eye.  Inputs must be pre-clipped & valid.
 
   if (pixels) {
 #ifdef USE_DMA
-    tft.pushPixelsDMA(&pbuffer[dmaBuf][0], pixels);
+    if (tft.DMA_Enabled && pbuffer[dmaBuf]) {
+      tft.pushPixelsDMA(pbuffer[dmaBuf], pixels);
+    } else if (pbuffer[dmaBuf]) {
+      tft.pushPixels(pbuffer[dmaBuf], pixels);
+    }
 #else
     tft.pushPixels(pbuffer, pixels);
 #endif

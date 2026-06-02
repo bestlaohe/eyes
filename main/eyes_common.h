@@ -47,7 +47,7 @@ struct EyeState {
 
 extern EyeState eye[NUM_EYES];
 extern TFT_eSPI tft;
-extern uint16_t pbuffer[BUFFERS][BUFFER_SIZE];
+extern uint16_t *pbuffer[BUFFERS];
 extern bool dmaBuf;
 extern uint32_t startTime;
 
