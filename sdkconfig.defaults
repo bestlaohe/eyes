@@ -1,3 +1,8 @@
+# esp32-arduino requires 1000 Hz tick (delay/micros timing)
+CONFIG_FREERTOS_HZ=1000
+# main uses setup()/loop(); Arduino core provides app_main
+CONFIG_AUTOSTART_ARDUINO=y
+
 # ESP32-S3 module with built-in OPI PSRAM (e.g. N8R8, N16R8)
 CONFIG_SPIRAM=y
 CONFIG_SPIRAM_MODE_OCT=y
