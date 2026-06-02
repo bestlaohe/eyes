@@ -511,12 +511,14 @@ SPI3_HOST = 2,  ///< actually SPI2
 #elif  defined (RPI_DISPLAY_TYPE)
   // ESP32-S3 low level SPI writes for 8, 16 and 32-bit values
   // to avoid the function call overhead
-  #define TFT_WRITE_BITS(D, B) *_spi_mosi_dlen = B-1;    \
+  #define TFT_WRITE_BITS(D, B) do { \
+                               *_spi_mosi_dlen = B-1;    \
                                *_spi_w = D;              \
                                *_spi_cmd = SPI_UPDATE;   \
-                        while (*_spi_cmd & SPI_UPDATE);  \
+                               while (*_spi_cmd & SPI_UPDATE); \
                                *_spi_cmd = SPI_USR;      \
-                        while (*_spi_cmd & SPI_USR);
+                               while (*_spi_cmd & SPI_USR); \
+                             } while(0)
 
   // Write 8 bits
   #define tft_Write_8(C) TFT_WRITE_BITS((C)<<8, 16)
@@ -550,12 +552,14 @@ SPI3_HOST = 2,  ///< actually SPI2
                                *_spi_cmd = SPI_USR;      \
                         while (*_spi_cmd & SPI_USR);
   #else
-    #define TFT_WRITE_BITS(D, B) *_spi_mosi_dlen = B-1;  \
+    #define TFT_WRITE_BITS(D, B) do { \
+                               *_spi_mosi_dlen = B-1;  \
                                *_spi_w = D;              \
                                *_spi_cmd = SPI_UPDATE;   \
-                        while (*_spi_cmd & SPI_UPDATE);  \
+                               while (*_spi_cmd & SPI_UPDATE); \
                                *_spi_cmd = SPI_USR;      \
-                        while (*_spi_cmd & SPI_USR);
+                               while (*_spi_cmd & SPI_USR); \
+                             } while(0)
   #endif
   // Write 8 bits
   #define tft_Write_8(C) TFT_WRITE_BITS(C, 8)
@@ -569,11 +573,13 @@ SPI3_HOST = 2,  ///< actually SPI2
                            *_spi_w = ((C)<<8 | (C)>>8); \
                            *_spi_cmd = SPI_USR;
   #else
-    #define tft_Write_16N(C) *_spi_mosi_dlen = 16-1;    \
+    #define tft_Write_16N(C) do { \
+                           *_spi_mosi_dlen = 16-1;    \
                            *_spi_w = ((C)<<8 | (C)>>8); \
                            *_spi_cmd = SPI_UPDATE;      \
-                    while (*_spi_cmd & SPI_UPDATE);     \
-                           *_spi_cmd = SPI_USR;
+                           while (*_spi_cmd & SPI_UPDATE); \
+                           *_spi_cmd = SPI_USR; \
+                         } while(0)
   #endif
 
   // Write 16 bits

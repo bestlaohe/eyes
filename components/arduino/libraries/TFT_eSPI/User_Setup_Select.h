@@ -18,6 +18,10 @@
 // IMPORTANT: if you update TFT_eSPI your setup file and link below will be lost!
 // >>>>>>>>>>>>>>>>> Keep a copy of your setup file safe! <<<<<<<<<<<<<<<<<<<<<<<<<<<
 
+// eyes 项目：屏幕引脚/驱动配置在 main/screen_config.h（更新库后需保留此行）
+#include "../../main/screen_config.h"
+#define USER_SETUP_LOADED
+
 ///////////////////////////////////////////////////////
 //   This allows external setup files to be used in  //
 //   the Platform_IO environment.                    //
@@ -44,7 +48,7 @@
 
 // Only ONE line below should be uncommented to define your setup.  Add extra lines and files as needed.
 
-#include <User_Setup.h>           // Default setup is root library folder
+//#include <User_Setup.h>           // Default setup is root library folder
 
 //#include <User_Setups/Setup1_ILI9341.h>  // Setup file for ESP8266 configured for my ILI9341
 //#include <User_Setups/Setup2_ST7735.h>   // Setup file for ESP8266 configured for my ST7735
@@ -282,6 +286,9 @@
 #elif defined (GC9A01_DRIVER)
      #include "TFT_Drivers/GC9A01_Defines.h"
      #define  TFT_DRIVER 0x9A01
+#elif defined (GC9D01_DRIVER)
+     #include "TFT_Drivers/GC9D01_Defines.h"
+     #define  TFT_DRIVER 0x9D01
 #elif defined (ILI9225_DRIVER)
      #include "TFT_Drivers/ILI9225_Defines.h"
      #define  TFT_DRIVER 0x9225
