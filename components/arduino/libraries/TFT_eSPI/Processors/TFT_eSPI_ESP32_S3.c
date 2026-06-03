@@ -378,51 +378,26 @@ void TFT_eSPI::pushPixels(const void* data_in, uint32_t len){
     return;
   }
 
-  uint32_t *data = (uint32_t*)data_in;
+  // ESP32-S3 + HSPI：32 像素批次路径会在中途挂死，改为每次最多 31 像素
+  uint16_t *pixels = (uint16_t *)data_in;
 
-  if (len > 31)
-  {
-    WRITE_PERI_REG(SPI_MOSI_DLEN_REG(SPI_PORT), 511);
-    while(len>31)
-    {
-      while (READ_PERI_REG(SPI_CMD_REG(SPI_PORT))&SPI_USR);
-      WRITE_PERI_REG(SPI_W0_REG(SPI_PORT),  *data++);
-      WRITE_PERI_REG(SPI_W1_REG(SPI_PORT),  *data++);
-      WRITE_PERI_REG(SPI_W2_REG(SPI_PORT),  *data++);
-      WRITE_PERI_REG(SPI_W3_REG(SPI_PORT),  *data++);
-      WRITE_PERI_REG(SPI_W4_REG(SPI_PORT),  *data++);
-      WRITE_PERI_REG(SPI_W5_REG(SPI_PORT),  *data++);
-      WRITE_PERI_REG(SPI_W6_REG(SPI_PORT),  *data++);
-      WRITE_PERI_REG(SPI_W7_REG(SPI_PORT),  *data++);
-      WRITE_PERI_REG(SPI_W8_REG(SPI_PORT),  *data++);
-      WRITE_PERI_REG(SPI_W9_REG(SPI_PORT),  *data++);
-      WRITE_PERI_REG(SPI_W10_REG(SPI_PORT), *data++);
-      WRITE_PERI_REG(SPI_W11_REG(SPI_PORT), *data++);
-      WRITE_PERI_REG(SPI_W12_REG(SPI_PORT), *data++);
-      WRITE_PERI_REG(SPI_W13_REG(SPI_PORT), *data++);
-      WRITE_PERI_REG(SPI_W14_REG(SPI_PORT), *data++);
-      WRITE_PERI_REG(SPI_W15_REG(SPI_PORT), *data++);
-#if CONFIG_IDF_TARGET_ESP32S3
-      SET_PERI_REG_MASK(SPI_CMD_REG(SPI_PORT), SPI_UPDATE);
-      while (READ_PERI_REG(SPI_CMD_REG(SPI_PORT))&SPI_UPDATE);
-#endif
-      SET_PERI_REG_MASK(SPI_CMD_REG(SPI_PORT), SPI_USR);
-      len -= 32;
-    }
-  }
-
-  if (len)
-  {
+  while (len) {
+    uint32_t chunk = (len > 31) ? 31 : len;
+    uint32_t *data = (uint32_t *)pixels;
     while (READ_PERI_REG(SPI_CMD_REG(SPI_PORT))&SPI_USR);
-    WRITE_PERI_REG(SPI_MOSI_DLEN_REG(SPI_PORT), (len << 4) - 1);
-    for (uint32_t i=0; i <= (len<<1); i+=4) WRITE_PERI_REG((SPI_W0_REG(SPI_PORT) + i), *data++);
+    WRITE_PERI_REG(SPI_MOSI_DLEN_REG(SPI_PORT), (chunk << 4) - 1);
+    for (uint32_t i = 0; i <= (chunk << 1); i += 4) {
+      WRITE_PERI_REG((SPI_W0_REG(SPI_PORT) + i), *data++);
+    }
 #if CONFIG_IDF_TARGET_ESP32S3
-      SET_PERI_REG_MASK(SPI_CMD_REG(SPI_PORT), SPI_UPDATE);
-      while (READ_PERI_REG(SPI_CMD_REG(SPI_PORT))&SPI_UPDATE);
+    SET_PERI_REG_MASK(SPI_CMD_REG(SPI_PORT), SPI_UPDATE);
+    while (READ_PERI_REG(SPI_CMD_REG(SPI_PORT))&SPI_UPDATE);
 #endif
     SET_PERI_REG_MASK(SPI_CMD_REG(SPI_PORT), SPI_USR);
+    while (READ_PERI_REG(SPI_CMD_REG(SPI_PORT))&SPI_USR);
+    pixels += chunk;
+    len -= chunk;
   }
-  while (READ_PERI_REG(SPI_CMD_REG(SPI_PORT))&SPI_USR);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////

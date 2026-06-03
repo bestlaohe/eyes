@@ -13,10 +13,25 @@
 #include <math.h>
 #include "eyes_common.h"
 
-#if !defined(LIGHT_PIN) || (LIGHT_PIN < 0)
-// 自动瞳孔缩放：用分形行为模拟瞳孔的主要反应和持续微调
-uint16_t oldIris = (IRIS_MIN + IRIS_MAX) / 2, newIris;
-#endif
+// 眼球移动缓入缓出曲线：3*t^2 - 2*t^3
+const uint8_t ease[] = {
+  0,  0,  0,  0,  0,  0,  0,  1,  1,  1,  1,  1,  2,  2,  2,  3,
+  3,  3,  4,  4,  4,  5,  5,  6,  6,  7,  7,  8,  9,  9, 10, 10,
+  11, 12, 12, 13, 14, 15, 15, 16, 17, 18, 18, 19, 20, 21, 22, 23,
+  24, 25, 26, 27, 27, 28, 29, 30, 31, 33, 34, 35, 36, 37, 38, 39,
+  40, 41, 42, 44, 45, 46, 47, 48, 50, 51, 52, 53, 54, 56, 57, 58,
+  60, 61, 62, 63, 65, 66, 67, 69, 70, 72, 73, 74, 76, 77, 78, 80,
+  81, 83, 84, 85, 87, 88, 90, 91, 93, 94, 96, 97, 98, 100, 101, 103,
+  104, 106, 107, 109, 110, 112, 113, 115, 116, 118, 119, 121, 122, 124, 125, 127,
+  128, 130, 131, 133, 134, 136, 137, 139, 140, 142, 143, 145, 146, 148, 149, 151,
+  152, 154, 155, 157, 158, 159, 161, 162, 164, 165, 167, 168, 170, 171, 172, 174,
+  175, 177, 178, 179, 181, 182, 183, 185, 186, 188, 189, 190, 192, 193, 194, 195,
+  197, 198, 199, 201, 202, 203, 204, 205, 207, 208, 209, 210, 211, 213, 214, 215,
+  216, 217, 218, 219, 220, 221, 222, 224, 225, 226, 227, 228, 228, 229, 230, 231,
+  232, 233, 234, 235, 236, 237, 237, 238, 239, 240, 240, 241, 242, 243, 243, 244,
+  245, 245, 246, 246, 247, 248, 248, 249, 249, 250, 250, 251, 251, 251, 252, 252,
+  252, 253, 253, 253, 254, 254, 254, 254, 254, 255, 255, 255, 255, 255, 255, 255
+};
 
 // 初始化眼睛 ---------------------------------------------------------
 void initEyes(void)
@@ -30,6 +45,7 @@ void initEyes(void)
     eye[e].tft_cs      = eyeInfo[e].select;
     eye[e].blink.state = NOBLINK;
     eye[e].xposition   = eyeInfo[e].xposition;
+    eye[e].yposition   = eyeInfo[e].yposition;
 
     pinMode(eye[e].tft_cs, OUTPUT);
     digitalWrite(eye[e].tft_cs, LOW);
@@ -41,6 +57,70 @@ void initEyes(void)
 #if defined(BLINK_PIN) && (BLINK_PIN >= 0)
   pinMode(BLINK_PIN, INPUT_PULLUP); // 双眼共用的手动眨眼按钮
 #endif
+}
+
+// 渲染单眼 --------------------------------------------------------------
+void drawEye(
+  uint8_t  e,        // 眼睛索引；0=左/1=右
+  uint32_t iScale,   // 虹膜缩放系数
+  uint32_t  scleraX, // 巩膜图像起始 X 偏移
+  uint32_t  scleraY, // 巩膜图像起始 Y 偏移
+  uint32_t  uT,      // 上眼皮遮罩阈值
+  uint32_t  lT) {    // 下眼皮遮罩阈值
+
+  uint16_t rowBuf[SCREEN_WIDTH];
+  uint32_t screenX, scleraXsave;
+  int32_t  irisX, irisY;
+  int16_t  lidX, dlidX;
+  uint32_t p;
+
+  scleraXsave = scleraX; // 每行开始时恢复 X 偏移
+  irisY       = scleraY - (SCLERA_HEIGHT - IRIS_HEIGHT) / 2;
+  dlidX       = e ? 1 : -1; // 双眼时眼皮贴图左右镜像
+
+  // ESP32-S3：先算完一行再推送，避免 Flash 大表读取与 HSPI 冲突
+  digitalWrite(eye[e].tft_cs, LOW);
+  for (uint32_t screenY = 0; screenY < SCREEN_HEIGHT; screenY++, scleraY++, irisY++) {
+    scleraX = scleraXsave;
+    irisX   = scleraXsave - (SCLERA_WIDTH - IRIS_WIDTH) / 2;
+    lidX    = e ? 0 : (int16_t)(SCREEN_WIDTH - 1);
+    for (screenX = 0; screenX < SCREEN_WIDTH; screenX++, scleraX++, irisX++, lidX += dlidX) {
+      if ((pgm_read_byte(lower + screenY * SCREEN_WIDTH + lidX) <= lT) ||
+          (pgm_read_byte(upper + screenY * SCREEN_WIDTH + lidX) <= uT)) {
+        p = 0; // 被眼皮遮住
+      } else if ((irisY < 0) || (irisY >= IRIS_HEIGHT) ||
+                 (irisX < 0) || (irisX >= IRIS_WIDTH)) {
+        if (scleraY < SCLERA_HEIGHT && scleraX < SCLERA_WIDTH) {
+          p = 0xFFE0; // catEye 巩膜为纯色，避免读取巨大 sclera[] 表
+        } else {
+          p = 0;
+        }
+      } else {
+        int32_t px = (int32_t)irisX - (IRIS_WIDTH / 2);
+        int32_t py = (int32_t)irisY - (IRIS_HEIGHT / 2);
+        // iScale 越小瞳孔越大，与原 polar 表语义一致
+        int32_t r = ((int32_t)IRIS_MAP_HEIGHT * (IRIS_WIDTH / 2)) / max((int32_t)iScale, (int32_t)1);
+        if (r < 12) r = 12;
+        if (r > (IRIS_WIDTH / 2 - 4)) r = IRIS_WIDTH / 2 - 4;
+        if ((uint32_t)(px * px + py * py) < (uint32_t)(r * r)) {
+          p = 0x0000; // 瞳孔
+        } else {
+          p = 0xFFE0; // 虹膜
+        }
+      }
+      rowBuf[screenX] = (uint16_t)(p >> 8 | p << 8);
+    }
+    tft.startWrite();
+    tft.setAddrWindow(eye[e].xposition, eye[e].yposition + screenY, SCREEN_WIDTH, 1);
+#ifdef USE_DMA
+    tft.pushPixelsDMA(rowBuf, SCREEN_WIDTH);
+#else
+    tft.pushPixels(rowBuf, SCREEN_WIDTH);
+#endif
+    tft.endWrite();
+    yield();
+  }
+  digitalWrite(eye[e].tft_cs, HIGH);
 }
 
 // 更新眼睛 --------------------------------------------------------------
@@ -69,111 +149,45 @@ void updateEye (void)
   frame(v);
 #endif // IRIS_SMOOTH
 
-#else  // 自动瞳孔缩放：调用递归 split()
+#else  // 自动瞳孔缩放：非阻塞状态机，每帧更新（替代阻塞式 split()）
 
-  newIris = random(IRIS_MIN, IRIS_MAX);
-  split(oldIris, newIris, micros(), 10000000L, IRIS_MAX - IRIS_MIN);
-  oldIris = newIris;
+  static bool     irisInMotion      = false;
+  static int16_t  irisOld           = (IRIS_MIN + IRIS_MAX) / 2;
+  static int16_t  irisNew           = irisOld;
+  static uint32_t irisMoveStartTime = 0L;
+  static int32_t  irisMoveDuration  = 0L;
+
+  uint32_t t = micros();
+  int16_t  irisScale;
+
+  if (irisInMotion) {
+    int32_t dt = t - irisMoveStartTime;
+    if (dt >= irisMoveDuration) {
+      irisInMotion      = false;
+      irisMoveDuration  = random(500000, 2000000);
+      irisMoveStartTime = t;
+      irisOld           = irisNew;
+      irisScale         = irisNew;
+    } else {
+      int16_t e = ease[255 * dt / irisMoveDuration] + 1;
+      irisScale = irisOld + (((irisNew - irisOld) * e) / 256);
+    }
+  } else {
+    irisScale = irisOld;
+    if ((int32_t)(t - irisMoveStartTime) >= irisMoveDuration) {
+      irisNew           = random(IRIS_MIN, IRIS_MAX);
+      irisMoveDuration  = random(2000000, 5000000);
+      irisMoveStartTime = t;
+      irisInMotion      = true;
+    }
+  }
+
+  frame(irisScale);
 
 #endif // LIGHT_PIN
 }
 
-// 渲染单眼 --------------------------------------------------------------
-void drawEye(
-  uint8_t  e,        // 眼睛索引；0=左/1=右
-  uint32_t iScale,   // 虹膜缩放系数
-  uint32_t  scleraX, // 巩膜图像起始 X 偏移
-  uint32_t  scleraY, // 巩膜图像起始 Y 偏移
-  uint32_t  uT,      // 上眼皮遮罩阈值
-  uint32_t  lT) {    // 下眼皮遮罩阈值
-
-  uint32_t  screenX, screenY, scleraXsave;
-  int32_t  irisX, irisY;
-  uint32_t p, a;
-  uint32_t d;
-
-  uint32_t pixels = 0;
-
-  // 向屏幕区域批量写入原始 16 位像素；每帧重置窗口，防止 SPI 异常后错位
-  digitalWrite(eye[e].tft_cs, LOW);
-  tft.startWrite();
-  tft.setAddrWindow(eye[e].xposition, 0, 128, 128);
-
-  scleraXsave = scleraX; // 每行开始时恢复 X 偏移
-  irisY       = scleraY - (SCLERA_HEIGHT - IRIS_HEIGHT) / 2;
-
-  // 双眼时眼皮贴图左右镜像
-  uint16_t lidX = 0;
-  uint16_t dlidX = -1;
-  if (e) dlidX = 1;
-  for (screenY = 0; screenY < SCREEN_HEIGHT; screenY++, scleraY++, irisY++) {
-    scleraX = scleraXsave;
-    irisX   = scleraXsave - (SCLERA_WIDTH - IRIS_WIDTH) / 2;
-    if (e) lidX = 0; else lidX = SCREEN_WIDTH - 1;
-    for (screenX = 0; screenX < SCREEN_WIDTH; screenX++, scleraX++, irisX++, lidX += dlidX) {
-      if ((pgm_read_byte(lower + screenY * SCREEN_WIDTH + lidX) <= lT) ||
-          (pgm_read_byte(upper + screenY * SCREEN_WIDTH + lidX) <= uT)) {
-        p = 0; // 被眼皮遮住
-      } else if ((irisY < 0) || (irisY >= IRIS_HEIGHT) ||
-                 (irisX < 0) || (irisX >= IRIS_WIDTH)) {
-        p = pgm_read_word(sclera + scleraY * SCLERA_WIDTH + scleraX); // 巩膜区域
-      } else {
-        p = pgm_read_word(polar + irisY * IRIS_WIDTH + irisX); // 极坐标：角度/距离
-        d = (iScale * (p & 0x7F)) / 128;                // 距离（Y）
-        if (d < IRIS_MAP_HEIGHT) {                      // 在虹膜范围内
-          a = (IRIS_MAP_WIDTH * (p >> 7)) / 512;        // 角度（X）
-          p = pgm_read_word(iris + d * IRIS_MAP_WIDTH + a);
-        } else {
-          p = pgm_read_word(sclera + scleraY * SCLERA_WIDTH + scleraX); // 虹膜外，取巩膜
-        }
-      }
-      *(&pbuffer[dmaBuf][0] + pixels++) = p >> 8 | p << 8;
-
-      if (pixels >= BUFFER_SIZE) {
-        yield();
-#ifdef USE_DMA
-        tft.pushPixelsDMA(&pbuffer[dmaBuf][0], pixels);
-        dmaBuf  = !dmaBuf;
-#else
-        tft.pushPixels(pbuffer, pixels);
-#endif
-        pixels = 0;
-      }
-    }
-  }
-
-  if (pixels) {
-#ifdef USE_DMA
-    tft.pushPixelsDMA(&pbuffer[dmaBuf][0], pixels);
-#else
-    tft.pushPixels(pbuffer, pixels);
-#endif
-  }
-  tft.endWrite();
-  digitalWrite(eye[e].tft_cs, HIGH);
-}
-
 // 眼睛动画 --------------------------------------------------------------
-
-// 眼球移动缓入缓出曲线：3*t^2 - 2*t^3
-const uint8_t ease[] = {
-  0,  0,  0,  0,  0,  0,  0,  1,  1,  1,  1,  1,  2,  2,  2,  3,
-  3,  3,  4,  4,  4,  5,  5,  6,  6,  7,  7,  8,  9,  9, 10, 10,
-  11, 12, 12, 13, 14, 15, 15, 16, 17, 18, 18, 19, 20, 21, 22, 23,
-  24, 25, 26, 27, 27, 28, 29, 30, 31, 33, 34, 35, 36, 37, 38, 39,
-  40, 41, 42, 44, 45, 46, 47, 48, 50, 51, 52, 53, 54, 56, 57, 58,
-  60, 61, 62, 63, 65, 66, 67, 69, 70, 72, 73, 74, 76, 77, 78, 80,
-  81, 83, 84, 85, 87, 88, 90, 91, 93, 94, 96, 97, 98, 100, 101, 103,
-  104, 106, 107, 109, 110, 112, 113, 115, 116, 118, 119, 121, 122, 124, 125, 127,
-  128, 130, 131, 133, 134, 136, 137, 139, 140, 142, 143, 145, 146, 148, 149, 151,
-  152, 154, 155, 157, 158, 159, 161, 162, 164, 165, 167, 168, 170, 171, 172, 174,
-  175, 177, 178, 179, 181, 182, 183, 185, 186, 188, 189, 190, 192, 193, 194, 195,
-  197, 198, 199, 201, 202, 203, 204, 205, 207, 208, 209, 210, 211, 213, 214, 215,
-  216, 217, 218, 219, 220, 221, 222, 224, 225, 226, 227, 228, 228, 229, 230, 231,
-  232, 233, 234, 235, 236, 237, 237, 238, 239, 240, 240, 241, 242, 243, 243, 244,
-  245, 245, 246, 246, 247, 248, 248, 249, 249, 250, 250, 251, 251, 251, 252, 252,
-  252, 253, 253, 253, 254, 254, 254, 254, 254, 255, 255, 255, 255, 255, 255, 255
-};
 
 #ifdef AUTOBLINK
 uint32_t timeOfLastBlink = 0L, timeToNextBlink = 0L;
@@ -187,9 +201,13 @@ void frame(uint16_t iScale) // 虹膜缩放值（0-1023）
   int16_t         eyeX, eyeY;
   uint32_t        t = micros(); // 本帧开始时刻
 
-  if (!(++frames & 255)) { // 每 256 帧打印一次
+  ++frames;
+  if (frames == 32 || !(frames & 255)) { // 第 32 帧及之后每 256 帧打印一次
     float elapsed = (millis() - startTime) / 1000.0;
-    if (elapsed) Serial.println((uint16_t)(frames / elapsed)); // 输出 FPS
+    if (elapsed) {
+      Serial.print("FPS: ");
+      Serial.println((uint16_t)(frames / elapsed)); // 输出 FPS
+    }
   }
 
   if (++eyeIndex >= NUM_EYES) eyeIndex = 0; // 轮流渲染各眼，每次 frame 只画一只
@@ -361,36 +379,3 @@ void frame(uint16_t iScale) // 虹膜缩放值（0-1023）
     user_loop(); // 最后一只眼睛画完后调用用户代码
   }
 }
-
-// 自动瞳孔缩放（无光敏电阻或电位器时）---------------------------------
-
-#if !defined(LIGHT_PIN) || (LIGHT_PIN < 0)
-
-// 用分形递归将瞳孔变化路径细分，模拟自然缩放
-
-void split(
-  int16_t  startValue, // 起始虹膜尺寸（IRIS_MIN ~ IRIS_MAX）
-  int16_t  endValue,   // 目标虹膜尺寸
-  uint32_t startTime,  // 起始时刻 micros()
-  int32_t  duration,   // 整段动画时长（微秒）
-  int16_t  range) {    // 递归细分时的随机扰动幅度
-
-  if (range >= 8) {    // 限制递归深度
-    range    /= 2;
-    duration /= 2;
-    int16_t  midValue = (startValue + endValue - range) / 2 + random(range);
-    uint32_t midTime  = startTime + duration;
-    split(startValue, midValue, startTime, duration, range); // 前半段
-    split(midValue  , endValue, midTime  , duration, range); // 后半段
-  } else {
-    int32_t dt;
-    int16_t v;
-    while ((dt = (micros() - startTime)) < duration) {
-      v = startValue + (((endValue - startValue) * dt) / duration);
-      if (v < IRIS_MIN)      v = IRIS_MIN;
-      else if (v > IRIS_MAX) v = IRIS_MAX;
-      frame(v); // 按当前插值绘制一帧
-    }
-  }
-}
-#endif // !LIGHT_PIN

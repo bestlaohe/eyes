@@ -5,6 +5,7 @@
 #include <TFT_eSPI.h>
 
 // DMA 双缓冲推送像素，显著提升帧率
+// ESP32-S3 + HSPI 上暂不可用，保持关闭
 // #define USE_DMA
 
 #define BUFFER_SIZE 1024  // 像素缓冲大小，推荐 128-1024
@@ -56,8 +57,6 @@ extern void updateEye(void);
 extern void drawEye(uint8_t e, uint32_t iScale, uint32_t scleraX, uint32_t scleraY,
                     uint32_t uT, uint32_t lT);
 extern void frame(uint16_t iScale);
-extern void split(int16_t startValue, int16_t endValue, uint32_t startTime,
-                  int32_t duration, int16_t range);
 
 extern void user_setup(void);
 extern void user_loop(void);

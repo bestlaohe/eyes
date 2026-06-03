@@ -55,6 +55,7 @@ void setup(void) {
   analogWrite(DISPLAY_BACKLIGHT, BACKLIGHT_MAX);
 #endif
 
+  randomSeed(esp_random());
   startTime = millis();  // 用于帧速率计算
 }
 
