@@ -52,7 +52,7 @@ void setup(void) {
 
 #if defined(DISPLAY_BACKLIGHT) && (DISPLAY_BACKLIGHT >= 0)
   Serial.println("背光现在打开！");
-  analogWrite(DISPLAY_BACKLIGHT, BACKLIGHT_MAX);
+  analogWrite(DISPLAY_BACKLIGHT, BACKLIGHT_BRIGHTNESS);
 #endif
 
   randomSeed(esp_random());

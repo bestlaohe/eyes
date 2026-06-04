@@ -34,7 +34,8 @@
 #define EYE_2_YPOSITION  0
 
 #define DISPLAY_BACKLIGHT  35 // 背光 BL（-1表示没有）
-#define BACKLIGHT_MAX    255  // 最大背光（0-255）
+#define BACKLIGHT_MAX      255 // PWM 满量程（0-255）
+#define BACKLIGHT_BRIGHTNESS 50 // 背光亮度，改此宏即可（0=最暗，BACKLIGHT_MAX=最亮）
 // 若背光仍不亮，在 screen_config.h 把 TFT_BACKLIGHT_ON 改为 LOW（低电平有效背光）
 
 // 眼睛列表 ----------------------------------------------------------------
