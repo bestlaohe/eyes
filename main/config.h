@@ -85,6 +85,12 @@
 #define LIGHT_MAX          1023
 #define IRIS_SMOOTH
 
+// 平面色眼换虹膜色（catEye 等，把纹理里的纯色换成新颜色）
+// RGB565 常用值：0xFFE0黄 0xF800红 0x07E0绿 0x001F蓝 0xFD20橙 0x780F紫
+// 注释掉 IRIS_COLOR 则使用 catEye.h 里的原色
+#define IRIS_COLOR       0x07E0
+#define IRIS_COLOR_FROM  0xFFE0   // catEye 默认黄，一般不用改
+
 #if !defined(IRIS_MIN)
 #define IRIS_MIN           90
 #endif

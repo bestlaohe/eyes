@@ -77,6 +77,27 @@ void initEyes(void)
     memcpy_P(s_sclera_ram, sclera, sclera_bytes);
     memcpy_P(s_polar_ram, polar, polar_bytes);
     memcpy_P(s_iris_ram, iris, iris_bytes);
+#if defined(IRIS_COLOR)
+#if !defined(IRIS_COLOR_FROM)
+#define IRIS_COLOR_FROM 0xFFE0
+#endif
+    {
+      const uint16_t from = (uint16_t)IRIS_COLOR_FROM;
+      const uint16_t to   = (uint16_t)IRIS_COLOR;
+      const size_t sclera_px = (size_t)SCLERA_HEIGHT * SCLERA_WIDTH;
+      const size_t iris_px   = (size_t)IRIS_MAP_HEIGHT * IRIS_MAP_WIDTH;
+      for (size_t i = 0; i < sclera_px; i++) {
+        if (s_sclera_ram[i] == from) {
+          s_sclera_ram[i] = to;
+        }
+      }
+      for (size_t i = 0; i < iris_px; i++) {
+        if (s_iris_ram[i] == from) {
+          s_iris_ram[i] = to;
+        }
+      }
+    }
+#endif
     s_textures_ready = true;
 
     ESP_LOGI(kEyeTag,

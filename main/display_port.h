@@ -2,6 +2,18 @@
 
 #include <stdint.h>
 
+#ifndef LCD_RGB565_SWAP
+#define LCD_RGB565_SWAP 1
+#endif
+
+static inline uint16_t rgb565_to_panel(uint16_t c) {
+#if LCD_RGB565_SWAP
+  return (uint16_t)((c << 8) | (c >> 8));
+#else
+  return c;
+#endif
+}
+
 bool display_init(void);
 void display_fill_black(uint8_t eye_index);
 
