@@ -195,6 +195,13 @@ void display_blit_rgb565(uint8_t eye_index, int16_t x, int16_t y,
     memcpy(s_dma_buf, pixels, bytes);
   }
 
+  // GC9D01 SPI 期望 RGB565 高字节在前；与 Animated Eyes 原版 pushPixels 一致
+  const size_t count = (size_t)w * (size_t)h;
+  for (size_t i = 0; i < count; i++) {
+    const uint16_t c = s_dma_buf[i];
+    s_dma_buf[i] = (uint16_t)((c << 8) | (c >> 8));
+  }
+
   s_color_done = false;
   esp_lcd_panel_draw_bitmap(s_panel[eye_index], x, y, x + w, y + h, s_dma_buf);
   display_wait_tx_done();
