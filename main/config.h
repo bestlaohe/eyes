@@ -9,16 +9,16 @@
 // --- 眼睛外观：只保留一个 #include ---
 #define SYMMETRICAL_EYELID
 
-//#include "data/defaultEye.h"
-//#include "data/dragonEye.h"
-//#include "data/noScleraEye.h"
-//#include "data/goatEye.h"
-//#include "data/newtEye.h"
-//#include "data/terminatorEye.h"
-#include "data/catEye.h"
-//#include "data/owlEye.h"      // 建议配合 EYE_NO_TRACKING（头文件内已定义）
-//#include "data/naugaEye.h"
-//#include "data/doeEye.h"
+//#include "data/defaultEye.h"    // 标准人眼（淡褐色）
+//#include "data/dragonEye.h"      // 竖瞳龙/恶魔眼
+// #include "data/noScleraEye.h"     // 大虹膜、无巩膜
+//#include "data/goatEye.h"        // 横瞳山羊/Krampus 眼
+// #include "data/newtEye.h"        // 蝾螈眼
+// #include "data/terminatorEye.h"  // 终结者红眼
+#include "data/catEye.h"         // 卡通猫眼（平面色）
+// #include "data/owlEye.h"         // 猫头鹰 Minerva（建议关 TRACKING，头文件内 EYE_NO_TRACKING）
+// #include "data/naugaEye.h"       // Nauga 眼球（建议关 TRACKING）
+// #include "data/doeEye.h"         // 卡通鹿眼（建议关 TRACKING）
 
 // --- GC9D01 屏 160×160 + SPI（esp_lcd）---
 // ESP32-S3 默认：BL=35 DC=36 CS=TFT1_CS CLK=38 MOSI=39 RST=40
@@ -74,6 +74,11 @@
 //#define JOYSTICK_Y_PIN A1
 #define TRACKING
 #define AUTOBLINK
+
+// 常态最小眼皮阈值（0=完全睁开，约 128=半闭）；160 屏略保留上眼皮更自然
+#if LCD_WIDTH > SCREEN_WIDTH
+#define EYELID_REST_U 88
+#endif
 
 #define LIGHT_CURVE        0.33
 #define LIGHT_MIN          0

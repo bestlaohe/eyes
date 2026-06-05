@@ -1,5 +1,5 @@
-#define IRIS_MIN 120 // Override default iris size limits in sketch
-#define IRIS_MAX 550
+#define IRIS_MIN 100 // Override default iris size limits in sketch
+#define IRIS_MAX 150
 
 #define SCLERA_WIDTH  160
 #define SCLERA_HEIGHT 160

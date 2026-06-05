@@ -26,6 +26,23 @@ static uint16_t s_polar_ram[IRIS_WIDTH * IRIS_HEIGHT];
 static uint16_t s_iris_ram[IRIS_MAP_HEIGHT * IRIS_MAP_WIDTH];
 static bool     s_textures_ready = false;
 
+#if LCD_WIDTH > SCREEN_WIDTH
+static constexpr uint8_t kEyelidTrackingBias =
+    (uint8_t)((LCD_WIDTH - SCREEN_WIDTH) * 3 / 8); // 160 屏约 12
+#endif
+
+static uint32_t scale_eyelid_threshold(uint32_t t) {
+#if LCD_WIDTH > SCREEN_WIDTH
+  // 睁开时缩小阈值；眨眼闭合需接近 254，缩放会导致闭不全
+  if (t >= 200) {
+    return t;
+  }
+  return (t * (uint32_t)SCREEN_WIDTH) / (uint32_t)LCD_WIDTH;
+#else
+  return t;
+#endif
+}
+
 // 眼球移动缓入缓出曲线：3*t^2 - 2*t^3
 const uint8_t ease[] = {
   0,  0,  0,  0,  0,  0,  0,  1,  1,  1,  1,  1,  2,  2,  2,  3,
@@ -98,6 +115,9 @@ void drawEye(
     return;
   }
 
+  const uint32_t effUT = scale_eyelid_threshold(uT);
+  const uint32_t effLT = scale_eyelid_threshold(lT);
+
   uint16_t *strip = display_dma_strip();
   if (!strip) {
     return;
@@ -132,7 +152,7 @@ void drawEye(
         const uint32_t curScleraX = scleraXsave + texX;
         const int32_t curIrisX =
             (int32_t)scleraXsave - (SCLERA_WIDTH - IRIS_WIDTH) / 2 + (int32_t)texX;
-        if ((lrow[lidX] <= lT) || (urow[lidX] <= uT)) {
+        if ((lrow[lidX] <= effLT) || (urow[lidX] <= effUT)) {
           p = 0;
         } else if ((irisY < 0) || (irisY >= IRIS_HEIGHT) ||
                    (curIrisX < 0) || (curIrisX >= IRIS_WIDTH)) {
@@ -384,18 +404,42 @@ void frame(uint16_t iScale) // 虹膜缩放值（0-1023）
 #if defined(TRACKING) && !defined(EYE_NO_TRACKING)
   int16_t sampleX = SCLERA_WIDTH  / 2 - (eyeX / 2), // 减弱 X 方向影响
           sampleY = SCLERA_HEIGHT / 2 - (eyeY + IRIS_HEIGHT / 4);
-  if (sampleX < 0) sampleX = 0;
-  else if (sampleX >= SCREEN_WIDTH) sampleX = SCREEN_WIDTH - 1;
-  if (sampleY < 0) sampleY = 0;
-  else if (sampleY >= SCREEN_HEIGHT) sampleY = SCREEN_HEIGHT - 1;
-  // 眼皮略不对称，取左右两点平均
-  n = (s_upper_lid[sampleY * SCREEN_WIDTH + sampleX] +
-       s_upper_lid[sampleY * SCREEN_WIDTH + (SCREEN_WIDTH - 1 - sampleX)]) /
-      2;
+  if (sampleY < 0) {
+    n = 0;
+  } else {
+    if (sampleX < 0) sampleX = 0;
+    else if (sampleX >= SCREEN_WIDTH) sampleX = SCREEN_WIDTH - 1;
+    if (sampleY >= SCREEN_HEIGHT) sampleY = SCREEN_HEIGHT - 1;
+    // 眼皮略不对称，取左右两点平均
+    n = (s_upper_lid[sampleY * SCREEN_WIDTH + sampleX] +
+         s_upper_lid[sampleY * SCREEN_WIDTH + (SCREEN_WIDTH - 1 - sampleX)]) /
+        2;
+#if LCD_WIDTH > SCREEN_WIDTH
+    if (n > kEyelidTrackingBias) {
+      n = (uint8_t)(n - kEyelidTrackingBias);
+    } else {
+      n = 0;
+    }
+#endif
+  }
   uThreshold = (uThreshold * 3 + n) / 4; // 低通滤波
-  lThreshold = 254 - uThreshold;         // 下眼皮受上眼皮牵连
+#if defined(EYELID_REST_U)
+  if (uThreshold < EYELID_REST_U) {
+    uThreshold = EYELID_REST_U;
+  }
+#endif
+#if LCD_WIDTH > SCREEN_WIDTH
+  // 全屏放大时不用 254-u，否则 u 偏低时下眼皮会被压死
+  lThreshold = uThreshold;
+#else
+  lThreshold = 254 - uThreshold; // 下眼皮受上眼皮牵连
+#endif
+#else
+#if defined(EYELID_REST_U)
+  uThreshold = lThreshold = EYELID_REST_U;
 #else
   uThreshold = lThreshold = 0; // 不跟踪时眼皮完全睁开（除非眨眼）
+#endif
 #endif
 
   // 按当前眨眼进度缩放眼皮阈值
