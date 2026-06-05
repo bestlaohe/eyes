@@ -89,8 +89,8 @@ esp_err_t esp_lcd_new_panel_gc9d01(const esp_lcd_panel_io_handle_t io, const esp
 #endif
 
     switch (panel_dev_config->bits_per_pixel) {
-    case 16: // RGB565
-        gc9d01->colmod_val = 0x55;
+    case 16: // RGB565 (GC9D01 COLMOD 0x05)
+        gc9d01->colmod_val = 0x05;
         gc9d01->fb_bits_per_pixel = 16;
         break;
     case 18: // RGB666
@@ -193,7 +193,7 @@ static const gc9d01_lcd_init_cmd_t vendor_specific_init_default[] = {
     {0x8D, (uint8_t []){0xFF}, 1, 0},
     {0x8E, (uint8_t []){0xFF}, 1, 0},
     {0x8F, (uint8_t []){0xFF}, 1, 0},
-    {0x3A, (uint8_t []){0x05}, 1, 0},
+    // 0x3A/0x36 sent once in panel_gc9d01_init() before this table
     {0xEC, (uint8_t []){0x01}, 1, 0},
     {0x74, (uint8_t []){0x02, 0x0E, 0x00, 0x00, 0x00, 0x00, 0x00}, 7, 0},
     {0x98, (uint8_t []){0x3E}, 1, 0},
@@ -221,7 +221,6 @@ static const gc9d01_lcd_init_cmd_t vendor_specific_init_default[] = {
     {0xF2, (uint8_t []){0x13, 0x15, 0x04, 0x05, 0x01, 0x34}, 6, 0},
     {0xF1, (uint8_t []){0x4B, 0xB8, 0x7B, 0x34, 0x35, 0xEF}, 6, 0},
     {0xF3, (uint8_t []){0x47, 0xB4, 0x72, 0x34, 0x35, 0xDA}, 6, 0},
-    {0x36, (uint8_t []){0x00}, 1, 0},
     {0xB4, (uint8_t []){0x00, 0x00}, 2, 0},
     {0x34, (uint8_t []){0x00}, 0, 0},  // 单独命令
     {0x11, (uint8_t []){0x00}, 0, 120},  // 单独命令 + delay 120ms

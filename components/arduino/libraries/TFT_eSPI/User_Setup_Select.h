@@ -18,8 +18,19 @@
 // IMPORTANT: if you update TFT_eSPI your setup file and link below will be lost!
 // >>>>>>>>>>>>>>>>> Keep a copy of your setup file safe! <<<<<<<<<<<<<<<<<<<<<<<<<<<
 
-// eyes 项目：用户配置见 main/config.h；本行供 TFT_eSPI 编译（更新库后需保留）
-#include "../../main/screen_config.h"
+// eyes 项目：显示走 esp_lcd + main/config.h；TFT_eSPI 仅占位编译（更新库后需保留）
+//#include "../../main/screen_config.h"
+#include "../../main/config.h"
+#define GC9D01_DRIVER
+#define TFT_WIDTH   LCD_WIDTH
+#define TFT_HEIGHT  LCD_HEIGHT
+#define TFT_MISO    -1
+#define TFT_CS      TFT1_CS
+#define TFT_DC      LCD_PIN_DC
+#define TFT_RST     LCD_PIN_RST
+#define TFT_MOSI    LCD_PIN_MOSI
+#define TFT_SCLK    LCD_PIN_SCLK
+#define TFT_BL      LCD_PIN_BL
 #define USER_SETUP_LOADED
 
 ///////////////////////////////////////////////////////
