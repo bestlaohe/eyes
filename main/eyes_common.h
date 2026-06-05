@@ -1,20 +1,6 @@
 #pragma once
 
 #include <Arduino.h>
-#include <SPI.h>
-#include <TFT_eSPI.h>
-
-// DMA 双缓冲推送像素，显著提升帧率
-// ESP32-S3 + HSPI 上暂不可用，保持关闭
-// #define USE_DMA
-
-#define BUFFER_SIZE 1024  // 像素缓冲大小，推荐 128-1024
-
-#ifdef USE_DMA
-#define BUFFERS 2         // DMA 模式：双缓冲
-#else
-#define BUFFERS 1         // 非 DMA 模式：单缓冲
-#endif
 
 // 每只眼睛的硬件配置（见 config.cpp 中的 eyeInfo[]）
 typedef struct {
@@ -24,6 +10,9 @@ typedef struct {
   int16_t xposition;  // 眼睛图像 X 偏移
   int16_t yposition;  // 眼睛图像 Y 偏移
 } eyeInfo_t;
+
+#include "config.h"
+#include "display_port.h"
 
 // 眨眼状态机
 #define NOBLINK 0   // 未眨眼
@@ -36,20 +25,14 @@ typedef struct {
   uint32_t startTime;  // 进入当前状态的时刻（微秒）
 } eyeBlink;
 
-#include "config.h"
-
 // 运行时每只眼睛的状态
 struct EyeState {
-  int16_t tft_cs;     // 片选引脚
   eyeBlink blink;     // 眨眼状态
   int16_t xposition;  // 渲染 X 偏移
   int16_t yposition;  // 渲染 Y 偏移
 };
 
 extern EyeState eye[NUM_EYES];
-extern TFT_eSPI tft;
-extern uint16_t pbuffer[BUFFERS][BUFFER_SIZE];
-extern bool dmaBuf;
 extern uint32_t startTime;
 
 extern void initEyes(void);

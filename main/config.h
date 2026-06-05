@@ -24,8 +24,8 @@
 // 显示器硬件设置（BOE 0.71" GC9D01 160x160） -------------------
 // BL=35  DC=36  CS=37  CL=38  DA=39  RST=40
 #define TFT_COUNT 1        // 屏幕数量（1或2）
-#define TFT1_CS 37         // TFT 1片选引脚（CS，设为-1来使用TFT_eSPI setup）
-#define TFT2_CS 21         // TFT 2片选引脚（设为-1来使用TFT_eSPI setup）
+#define TFT1_CS 37         // 眼 1 片选 CS（esp_lcd 每眼独立 CS）
+#define TFT2_CS 21         // 眼 2 片选 CS
 #define TFT_1_ROT 0        // TFT 1旋转
 #define TFT_2_ROT 3        // TFT 2旋转
 #define EYE_1_XPOSITION  16 // 128x128 眼睛在 160x160 屏上居中
@@ -36,7 +36,7 @@
 #define DISPLAY_BACKLIGHT  35 // 背光 BL（-1表示没有）
 #define BACKLIGHT_MAX      255 // PWM 满量程（0-255）
 #define BACKLIGHT_BRIGHTNESS 50 // 背光亮度，改此宏即可（0=最暗，BACKLIGHT_MAX=最亮）
-// 若背光仍不亮，在 screen_config.h 把 TFT_BACKLIGHT_ON 改为 LOW（低电平有效背光）
+// 若背光仍不亮，在 display_config.h 把 LCD_BACKLIGHT_ON 改为 LOW（低电平有效背光）
 
 // 眼睛列表 ----------------------------------------------------------------
 #define NUM_EYES 1 // 要展示的眼睛数量（1或2）

@@ -42,13 +42,9 @@ void initEyes(void)
   for (uint8_t e = 0; e < NUM_EYES; e++) {
     Serial.print("Create display #"); Serial.println(e);
 
-    eye[e].tft_cs      = eyeInfo[e].select;
     eye[e].blink.state = NOBLINK;
     eye[e].xposition   = eyeInfo[e].xposition;
     eye[e].yposition   = eyeInfo[e].yposition;
-
-    pinMode(eye[e].tft_cs, OUTPUT);
-    digitalWrite(eye[e].tft_cs, LOW);
 
     // 若定义了单眼 wink 引脚，则一并初始化
     if (eyeInfo[e].wink >= 0) pinMode(eyeInfo[e].wink, INPUT_PULLUP);
@@ -78,8 +74,6 @@ void drawEye(
   irisY       = scleraY - (SCLERA_HEIGHT - IRIS_HEIGHT) / 2;
   dlidX       = e ? 1 : -1; // 双眼时眼皮贴图左右镜像
 
-  // ESP32-S3：先算完一行再推送，避免 Flash 大表读取与 HSPI 冲突
-  digitalWrite(eye[e].tft_cs, LOW);
   for (uint32_t screenY = 0; screenY < SCREEN_HEIGHT; screenY++, scleraY++, irisY++) {
     scleraX = scleraXsave;
     irisX   = scleraXsave - (SCLERA_WIDTH - IRIS_WIDTH) / 2;
@@ -108,19 +102,14 @@ void drawEye(
           p = 0xFFE0; // 虹膜
         }
       }
-      rowBuf[screenX] = (uint16_t)(p >> 8 | p << 8);
+      rowBuf[screenX] = (uint16_t)p;
     }
-    tft.startWrite();
-    tft.setAddrWindow(eye[e].xposition, eye[e].yposition + screenY, SCREEN_WIDTH, 1);
-#ifdef USE_DMA
-    tft.pushPixelsDMA(rowBuf, SCREEN_WIDTH);
-#else
-    tft.pushPixels(rowBuf, SCREEN_WIDTH);
-#endif
-    tft.endWrite();
+    display_blit_rgb565(e,
+                        eye[e].xposition,
+                        eye[e].yposition + (int16_t)screenY,
+                        SCREEN_WIDTH, 1, rowBuf);
     yield();
   }
-  digitalWrite(eye[e].tft_cs, HIGH);
 }
 
 // 更新眼睛 --------------------------------------------------------------

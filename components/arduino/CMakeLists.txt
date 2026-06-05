@@ -84,9 +84,7 @@ set(ARDUINO_ALL_LIBRARIES
   BluetoothSerial
   DNSServer
   EEPROM
-  ESP_I2S
   ESP_NOW
-  ESP_SR
   ESPmDNS
   Ethernet
   FFat
@@ -312,7 +310,7 @@ ${ARDUINO_LIBRARIES_INCLUDEDIRS})
 
 set(srcs ${CORE_SRCS} ${ARDUINO_LIBRARIES_SRCS})
 set(priv_includes cores/esp32/libb64)
-set(requires spi_flash esp_partition mbedtls wifi_provisioning wpa_supplicant esp_adc esp_eth http_parser)
+set(requires spi_flash esp_partition mbedtls wifi_provisioning wpa_supplicant esp_adc esp_eth http_parser mdns)
 set(priv_requires fatfs nvs_flash app_update spiffs bootloader_support bt esp_hid usb esp_psram ${ARDUINO_LIBRARIES_REQUIRES})
 
 idf_component_register(INCLUDE_DIRS ${includedirs} PRIV_INCLUDE_DIRS ${priv_includes} SRCS ${srcs} REQUIRES ${requires} PRIV_REQUIRES ${priv_requires})
