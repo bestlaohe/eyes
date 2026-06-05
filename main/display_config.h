@@ -9,7 +9,7 @@
 #define LCD_WIDTH   160
 #define LCD_HEIGHT  160
 
-#define LCD_SPI_HZ  40000000
+#define LCD_SPI_HZ  80000000
 
 #if CONFIG_IDF_TARGET_ESP32S3
 #define LCD_PIN_BL    35

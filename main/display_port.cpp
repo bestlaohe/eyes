@@ -22,13 +22,16 @@ static const char *TAG = "display";
 #define LCD_SPI_HOST SPI2_HOST
 #endif
 
+static constexpr int kBlitBandRows = 64;
+static const size_t kBandBytes =
+    (size_t)LCD_WIDTH * (size_t)kBlitBandRows * sizeof(uint16_t);
+
 static esp_lcd_panel_handle_t s_panel[NUM_EYES];
 static esp_lcd_panel_io_handle_t s_io[NUM_EYES];
 static bool s_spi_bus_ready = false;
 
 static volatile bool s_color_done = true;
 static uint16_t *s_dma_buf = nullptr;
-static size_t s_dma_buf_bytes = 0;
 
 static bool IRAM_ATTR on_color_trans_done(esp_lcd_panel_io_handle_t panel_io,
                                           esp_lcd_panel_io_event_data_t *edata,
@@ -43,7 +46,7 @@ static bool IRAM_ATTR on_color_trans_done(esp_lcd_panel_io_handle_t panel_io,
 static void display_wait_tx_done(void) {
   const uint32_t start = millis();
   while (!s_color_done) {
-    if (millis() - start > 50) {
+    if (millis() - start > 100) {
       s_color_done = true;
       break;
     }
@@ -51,19 +54,19 @@ static void display_wait_tx_done(void) {
   }
 }
 
-static uint16_t *display_dma_buffer(size_t bytes) {
-  if (!s_dma_buf || s_dma_buf_bytes < bytes) {
-    if (s_dma_buf) {
-      heap_caps_free(s_dma_buf);
-      s_dma_buf = nullptr;
-      s_dma_buf_bytes = 0;
-    }
-    s_dma_buf = (uint16_t *)heap_caps_malloc(bytes, MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL);
-    if (s_dma_buf) {
-      s_dma_buf_bytes = bytes;
-    }
+static bool display_ensure_dma_buf(void) {
+  if (!s_dma_buf) {
+    s_dma_buf = (uint16_t *)heap_caps_malloc(kBandBytes, MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL);
   }
-  return s_dma_buf;
+  return s_dma_buf != nullptr;
+}
+
+uint16_t *display_dma_strip(void) {
+  return display_ensure_dma_buf() ? s_dma_buf : nullptr;
+}
+
+int display_dma_strip_rows(void) {
+  return kBlitBandRows;
 }
 
 static void display_apply_rotation(esp_lcd_panel_handle_t panel, uint8_t rotation) {
@@ -125,6 +128,11 @@ static esp_err_t display_panel_add(uint8_t eye_index) {
 }
 
 bool display_init(void) {
+  if (!display_ensure_dma_buf()) {
+    Serial.println("display: DMA 缓冲分配失败");
+    return false;
+  }
+
   if (!s_spi_bus_ready) {
     spi_bus_config_t bus_config = {};
     bus_config.mosi_io_num = LCD_PIN_MOSI;
@@ -132,7 +140,7 @@ bool display_init(void) {
     bus_config.sclk_io_num = LCD_PIN_SCLK;
     bus_config.quadwp_io_num = -1;
     bus_config.quadhd_io_num = -1;
-    bus_config.max_transfer_sz = LCD_WIDTH * SCREEN_WIDTH * (int)sizeof(uint16_t);
+    bus_config.max_transfer_sz = (int)kBandBytes;
 
     if (spi_bus_initialize(LCD_SPI_HOST, &bus_config, SPI_DMA_CH_AUTO) != ESP_OK) {
       Serial.println("display: SPI 总线初始化失败");
@@ -151,24 +159,21 @@ bool display_init(void) {
     display_fill_black(e);
   }
 
-  Serial.println("display: esp_lcd 初始化完成");
+  ESP_LOGI(TAG, "esp_lcd ready SPI %lu MHz band %d rows",
+           (unsigned long)(LCD_SPI_HZ / 1000000UL), kBlitBandRows);
   return true;
 }
 
 void display_fill_black(uint8_t eye_index) {
-  if (eye_index >= NUM_EYES || !s_panel[eye_index]) {
+  if (eye_index >= NUM_EYES || !s_panel[eye_index] || !s_dma_buf) {
     return;
   }
 
-  static uint16_t black_row[LCD_WIDTH];
-  static bool black_ready = false;
-  if (!black_ready) {
-    memset(black_row, 0, sizeof(black_row));
-    black_ready = true;
-  }
-
-  for (int16_t y = 0; y < LCD_HEIGHT; y++) {
-    display_blit_rgb565(eye_index, 0, y, LCD_WIDTH, 1, black_row);
+  memset(s_dma_buf, 0, kBandBytes);
+  for (int16_t y = 0; y < LCD_HEIGHT; y += kBlitBandRows) {
+    const int16_t h = (int16_t)((y + kBlitBandRows <= LCD_HEIGHT) ? kBlitBandRows
+                                                                  : (LCD_HEIGHT - y));
+    display_blit_rgb565(eye_index, 0, y, LCD_WIDTH, h, s_dma_buf);
   }
 }
 
@@ -177,15 +182,21 @@ void display_blit_rgb565(uint8_t eye_index, int16_t x, int16_t y,
   if (eye_index >= NUM_EYES || !s_panel[eye_index] || !pixels || w <= 0 || h <= 0) {
     return;
   }
-
-  const size_t bytes = (size_t)w * (size_t)h * sizeof(uint16_t);
-  uint16_t *dma_buf = display_dma_buffer(bytes);
-  if (!dma_buf) {
+  if (!s_dma_buf) {
     return;
   }
-  memcpy(dma_buf, pixels, bytes);
+
+  const size_t bytes = (size_t)w * (size_t)h * sizeof(uint16_t);
+  if (bytes > kBandBytes) {
+    ESP_LOGE(TAG, "blit %dx%d exceeds band %d rows", w, h, kBlitBandRows);
+    return;
+  }
+
+  if (pixels != s_dma_buf) {
+    memcpy(s_dma_buf, pixels, bytes);
+  }
 
   s_color_done = false;
-  esp_lcd_panel_draw_bitmap(s_panel[eye_index], x, y, x + w, y + h, dma_buf);
+  esp_lcd_panel_draw_bitmap(s_panel[eye_index], x, y, x + w, y + h, s_dma_buf);
   display_wait_tx_done();
 }

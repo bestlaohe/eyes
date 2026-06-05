@@ -34,6 +34,7 @@ struct EyeState {
 
 extern EyeState eye[NUM_EYES];
 extern uint32_t startTime;
+extern volatile uint32_t g_frame_count;
 
 extern void initEyes(void);
 extern void updateEye(void);

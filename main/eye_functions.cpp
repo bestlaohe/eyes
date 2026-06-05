@@ -11,7 +11,13 @@
 //--------------------------------------------------------------------------
 
 #include <math.h>
+
 #include "eyes_common.h"
+
+// 眼皮遮罩放内部 RAM（SPI 屏活跃时勿读 Flash/PSRAM）
+static uint8_t s_upper_lid[SCREEN_WIDTH * SCREEN_HEIGHT];
+static uint8_t s_lower_lid[SCREEN_WIDTH * SCREEN_HEIGHT];
+static bool s_lid_ready = false;
 
 // 眼球移动缓入缓出曲线：3*t^2 - 2*t^3
 const uint8_t ease[] = {
@@ -36,22 +42,26 @@ const uint8_t ease[] = {
 // 初始化眼睛 ---------------------------------------------------------
 void initEyes(void)
 {
-  Serial.println("Initialise eye objects");
+  if (!s_lid_ready) {
+    const size_t lid_bytes = (size_t)SCREEN_WIDTH * SCREEN_HEIGHT;
+    memcpy_P(s_upper_lid, upper, lid_bytes);
+    memcpy_P(s_lower_lid, lower, lid_bytes);
+    s_lid_ready = true;
+  }
 
   // 根据 config.h 中的 eyeInfo 列表初始化每只眼睛
   for (uint8_t e = 0; e < NUM_EYES; e++) {
-    Serial.print("Create display #"); Serial.println(e);
-
     eye[e].blink.state = NOBLINK;
     eye[e].xposition   = eyeInfo[e].xposition;
     eye[e].yposition   = eyeInfo[e].yposition;
 
-    // 若定义了单眼 wink 引脚，则一并初始化
-    if (eyeInfo[e].wink >= 0) pinMode(eyeInfo[e].wink, INPUT_PULLUP);
+    if (eyeInfo[e].wink >= 0) {
+      pinMode(eyeInfo[e].wink, INPUT_PULLUP);
+    }
   }
 
 #if defined(BLINK_PIN) && (BLINK_PIN >= 0)
-  pinMode(BLINK_PIN, INPUT_PULLUP); // 双眼共用的手动眨眼按钮
+  pinMode(BLINK_PIN, INPUT_PULLUP);
 #endif
 }
 
@@ -64,50 +74,62 @@ void drawEye(
   uint32_t  uT,      // 上眼皮遮罩阈值
   uint32_t  lT) {    // 下眼皮遮罩阈值
 
-  uint16_t rowBuf[SCREEN_WIDTH];
+  if (!s_lid_ready) {
+    return;
+  }
+
+  uint16_t *strip = display_dma_strip();
+  if (!strip) {
+    return;
+  }
+
+  const int bandRows = display_dma_strip_rows();
   uint32_t screenX, scleraXsave;
   int32_t  irisX, irisY;
   int16_t  lidX, dlidX;
   uint32_t p;
 
-  scleraXsave = scleraX; // 每行开始时恢复 X 偏移
-  irisY       = scleraY - (SCLERA_HEIGHT - IRIS_HEIGHT) / 2;
-  dlidX       = e ? 1 : -1; // 双眼时眼皮贴图左右镜像
+  int32_t pupil_r = ((int32_t)IRIS_MAP_HEIGHT * (IRIS_WIDTH / 2)) / max((int32_t)iScale, (int32_t)1);
+  if (pupil_r < 12) pupil_r = 12;
+  if (pupil_r > (IRIS_WIDTH / 2 - 4)) pupil_r = IRIS_WIDTH / 2 - 4;
+  const uint32_t pupil_r2 = (uint32_t)(pupil_r * pupil_r);
 
-  for (uint32_t screenY = 0; screenY < SCREEN_HEIGHT; screenY++, scleraY++, irisY++) {
-    scleraX = scleraXsave;
-    irisX   = scleraXsave - (SCLERA_WIDTH - IRIS_WIDTH) / 2;
-    lidX    = e ? 0 : (int16_t)(SCREEN_WIDTH - 1);
-    for (screenX = 0; screenX < SCREEN_WIDTH; screenX++, scleraX++, irisX++, lidX += dlidX) {
-      if ((pgm_read_byte(lower + screenY * SCREEN_WIDTH + lidX) <= lT) ||
-          (pgm_read_byte(upper + screenY * SCREEN_WIDTH + lidX) <= uT)) {
-        p = 0; // 被眼皮遮住
-      } else if ((irisY < 0) || (irisY >= IRIS_HEIGHT) ||
-                 (irisX < 0) || (irisX >= IRIS_WIDTH)) {
-        if (scleraY < SCLERA_HEIGHT && scleraX < SCLERA_WIDTH) {
-          p = 0xFFE0; // catEye 巩膜为纯色，避免读取巨大 sclera[] 表
-        } else {
+  scleraXsave = scleraX;
+  const int32_t irisY0 = (int32_t)scleraY - (SCLERA_HEIGHT - IRIS_HEIGHT) / 2;
+  dlidX       = e ? 1 : -1;
+
+  for (int32_t bandY = 0; bandY < (int32_t)SCREEN_HEIGHT; bandY += bandRows) {
+    const int32_t bandH = (int32_t)((bandY + bandRows <= (int32_t)SCREEN_HEIGHT)
+                                        ? bandRows
+                                        : ((int32_t)SCREEN_HEIGHT - bandY));
+    for (int32_t sy = 0; sy < bandH; sy++) {
+      const uint32_t screenY = (uint32_t)(bandY + sy);
+      const uint32_t scleraYcur = scleraY + screenY;
+      irisY = irisY0 + (int32_t)screenY;
+      scleraX = scleraXsave;
+      irisX   = scleraXsave - (SCLERA_WIDTH - IRIS_WIDTH) / 2;
+      lidX    = e ? 0 : (int16_t)(SCREEN_WIDTH - 1);
+      uint16_t *row = &strip[(size_t)sy * SCREEN_WIDTH];
+      const uint8_t *urow = s_upper_lid + screenY * SCREEN_WIDTH;
+      const uint8_t *lrow = s_lower_lid + screenY * SCREEN_WIDTH;
+      for (screenX = 0; screenX < SCREEN_WIDTH; screenX++, scleraX++, irisX++, lidX += dlidX) {
+        if ((lrow[lidX] <= lT) || (urow[lidX] <= uT)) {
           p = 0;
-        }
-      } else {
-        int32_t px = (int32_t)irisX - (IRIS_WIDTH / 2);
-        int32_t py = (int32_t)irisY - (IRIS_HEIGHT / 2);
-        // iScale 越小瞳孔越大，与原 polar 表语义一致
-        int32_t r = ((int32_t)IRIS_MAP_HEIGHT * (IRIS_WIDTH / 2)) / max((int32_t)iScale, (int32_t)1);
-        if (r < 12) r = 12;
-        if (r > (IRIS_WIDTH / 2 - 4)) r = IRIS_WIDTH / 2 - 4;
-        if ((uint32_t)(px * px + py * py) < (uint32_t)(r * r)) {
-          p = 0x0000; // 瞳孔
+        } else if ((irisY < 0) || (irisY >= IRIS_HEIGHT) ||
+                   (irisX < 0) || (irisX >= IRIS_WIDTH)) {
+          p = (scleraYcur < SCLERA_HEIGHT && scleraX < SCLERA_WIDTH) ? 0xFFE0 : 0;
         } else {
-          p = 0xFFE0; // 虹膜
+          const int32_t px = (int32_t)irisX - (IRIS_WIDTH / 2);
+          const int32_t py = (int32_t)irisY - (IRIS_HEIGHT / 2);
+          p = ((uint32_t)(px * px + py * py) < pupil_r2) ? 0x0000 : 0xFFE0;
         }
+        row[screenX] = (uint16_t)p;
       }
-      rowBuf[screenX] = (uint16_t)p;
     }
     display_blit_rgb565(e,
-                        eye[e].xposition,
-                        eye[e].yposition + (int16_t)screenY,
-                        SCREEN_WIDTH, 1, rowBuf);
+                         eye[e].xposition,
+                         eye[e].yposition + (int16_t)bandY,
+                         SCREEN_WIDTH, (int16_t)bandH, strip);
     yield();
   }
 }
@@ -191,13 +213,7 @@ void frame(uint16_t iScale) // 虹膜缩放值（0-1023）
   uint32_t        t = micros(); // 本帧开始时刻
 
   ++frames;
-  if (frames == 32 || !(frames & 255)) { // 第 32 帧及之后每 256 帧打印一次
-    float elapsed = (millis() - startTime) / 1000.0;
-    if (elapsed) {
-      Serial.print("FPS: ");
-      Serial.println((uint16_t)(frames / elapsed)); // 输出 FPS
-    }
-  }
+  g_frame_count = frames;
 
   if (++eyeIndex >= NUM_EYES) eyeIndex = 0; // 轮流渲染各眼，每次 frame 只画一只
 
@@ -340,10 +356,14 @@ void frame(uint16_t iScale) // 虹膜缩放值（0-1023）
 #ifdef TRACKING
   int16_t sampleX = SCLERA_WIDTH  / 2 - (eyeX / 2), // 减弱 X 方向影响
           sampleY = SCLERA_HEIGHT / 2 - (eyeY + IRIS_HEIGHT / 4);
+  if (sampleX < 0) sampleX = 0;
+  else if (sampleX >= SCREEN_WIDTH) sampleX = SCREEN_WIDTH - 1;
+  if (sampleY < 0) sampleY = 0;
+  else if (sampleY >= SCREEN_HEIGHT) sampleY = SCREEN_HEIGHT - 1;
   // 眼皮略不对称，取左右两点平均
-  if (sampleY < 0) n = 0;
-  else            n = (pgm_read_byte(upper + sampleY * SCREEN_WIDTH + sampleX) +
-                         pgm_read_byte(upper + sampleY * SCREEN_WIDTH + (SCREEN_WIDTH - 1 - sampleX))) / 2;
+  n = (s_upper_lid[sampleY * SCREEN_WIDTH + sampleX] +
+       s_upper_lid[sampleY * SCREEN_WIDTH + (SCREEN_WIDTH - 1 - sampleX)]) /
+      2;
   uThreshold = (uThreshold * 3 + n) / 4; // 低通滤波
   lThreshold = 254 - uThreshold;         // 下眼皮受上眼皮牵连
 #else
