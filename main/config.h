@@ -9,27 +9,29 @@
 
 #define SYMMETRICAL_EYELID // 对称眼皮
 
-// 启用以下其中一个#include -- 各种眼睛的大量图形表：
-//#include "data/defaultEye.h"
-//#include "data/dragonEye.h"
-//#include "data/noScleraEye.h"
-//#include "data/goatEye.h"
-//#include "data/newtEye.h"
-#include "data/terminatorEye.h"
-//#include "data/defaultEye.h"
-//#include "data/owlEye.h"
-//#include "data/naugaEye.h"
-//#include "data/doeEye.h"
+// 启用以下其中一个 #include（同时只能选一个）：
+// #include "data/defaultEye.h"      // 默认榛子色人眼
+// #include "data/dragonEye.h"       // 龙/恶魔眼（160×160 纹理）
+//#include "data/noScleraEye.h"     // 大虹膜、无巩膜
+//#include "data/goatEye.h"         // 山羊眼（横瞳）
+//#include "data/newtEye.h"         // 蝾螈眼
+//#include "data/terminatorEye.h"   // 终结者眼
+// #include "data/owlEye.h"            // 猫头鹰眼（建议关闭 TRACKING）
+//#include "data/naugaEye.h"        // Nauga 滚动眼（建议关闭 TRACKING）
+//#include "data/doeEye.h"          // 卡通鹿眼（建议关闭 TRACKING）
+#include "data/catEye.h"          // 卡通猫眼（平面色）
 
 // 显示器硬件设置（BOE 0.71" GC9D01 160x160） -------------------
 // BL=35  DC=36  CS=37  CL=38  DA=39  RST=40
+#include "screen_config.h"
+
 #define TFT_COUNT 1        // 屏幕数量（1或2）
 #define TFT1_CS 37         // TFT 1片选引脚（CS，设为-1来使用TFT_eSPI setup）
 #define TFT2_CS 21         // TFT 2片选引脚（设为-1来使用TFT_eSPI setup）
 #define TFT_1_ROT 0        // TFT 1旋转
 #define TFT_2_ROT 3        // TFT 2旋转
-#define EYE_1_XPOSITION  16 // 128x128 眼睛在 160x160 屏上居中
-#define EYE_1_YPOSITION  16
+#define EYE_1_XPOSITION  0 // 128x128 纹理缩放铺满屏时从 (0,0) 起绘
+#define EYE_1_YPOSITION  0
 #define EYE_2_XPOSITION  0
 #define EYE_2_YPOSITION  0
 

@@ -148,36 +148,40 @@ void drawEye(
   uint32_t  uT,      // 上眼皮遮罩阈值
   uint32_t  lT) {    // 下眼皮遮罩阈值
 
-  uint16_t rowBuf[SCREEN_WIDTH];
-  uint32_t screenX, scleraXsave;
+  uint16_t rowBuf[TFT_WIDTH > SCREEN_WIDTH ? TFT_WIDTH : SCREEN_WIDTH];
+  uint32_t screenX, scleraXsave, scleraYbase;
   int32_t  irisX, irisY;
-  int16_t  lidX, dlidX;
+  int16_t  lidX;
   uint32_t p, a, d;
+  uint32_t texX, texY, curScleraX, curScleraY;
 
   if (!texReady) return;
 
   scleraXsave = scleraX;
-  irisY       = scleraY - (SCLERA_HEIGHT - IRIS_HEIGHT) / 2;
-  dlidX       = e ? 1 : -1;
+  scleraYbase = scleraY;
 
   digitalWrite(eye[e].tft_cs, LOW);
   tft.startWrite();
-  for (uint32_t screenY = 0; screenY < SCREEN_HEIGHT; screenY++, scleraY++, irisY++) {
-    if (scleraY < SCLERA_HEIGHT && scleraPart) {
-      size_t rowOff = scleraPartOff + (size_t)scleraY * SCLERA_WIDTH * sizeof(uint16_t);
+  for (uint32_t screenY = 0; screenY < TFT_HEIGHT; screenY++) {
+    texY         = (screenY * SCREEN_HEIGHT) / TFT_HEIGHT;
+    curScleraY   = scleraYbase + texY;
+    irisY        = (int32_t)curScleraY - (SCLERA_HEIGHT - IRIS_HEIGHT) / 2;
+    if (curScleraY < SCLERA_HEIGHT && scleraPart) {
+      size_t rowOff = scleraPartOff + curScleraY * SCLERA_WIDTH * sizeof(uint16_t);
       esp_partition_read(scleraPart, rowOff, scleraRow, SCLERA_WIDTH * sizeof(uint16_t));
     }
-    scleraX = scleraXsave;
-    irisX   = scleraXsave - (SCLERA_WIDTH - IRIS_WIDTH) / 2;
-    lidX    = e ? 0 : (int16_t)(SCREEN_WIDTH - 1);
-    for (screenX = 0; screenX < SCREEN_WIDTH; screenX++, scleraX++, irisX++, lidX += dlidX) {
-      if ((ramLidStore[SCREEN_WIDTH * SCREEN_HEIGHT + screenY * SCREEN_WIDTH + lidX] <= lT) ||
-          (ramLidStore[screenY * SCREEN_WIDTH + lidX] <= uT)) {
+    for (screenX = 0; screenX < TFT_WIDTH; screenX++) {
+      texX       = (screenX * SCREEN_WIDTH) / TFT_WIDTH;
+      curScleraX = scleraXsave + texX;
+      irisX      = (int32_t)curScleraX - (SCLERA_WIDTH - IRIS_WIDTH) / 2;
+      lidX       = e ? (int16_t)texX : (int16_t)(SCREEN_WIDTH - 1 - texX);
+      if ((ramLidStore[texY * SCREEN_WIDTH + lidX] <= lT) ||
+          (ramLidStore[SCREEN_WIDTH * SCREEN_HEIGHT + texY * SCREEN_WIDTH + lidX] <= uT)) {
         p = 0;
       } else if ((irisY < 0) || (irisY >= IRIS_HEIGHT) ||
                  (irisX < 0) || (irisX >= IRIS_WIDTH)) {
-        if (scleraY < SCLERA_HEIGHT && scleraX < SCLERA_WIDTH) {
-          p = scleraRow[scleraX];
+        if (curScleraY < SCLERA_HEIGHT && curScleraX < SCLERA_WIDTH) {
+          p = scleraRow[curScleraX];
         } else {
           p = 0;
         }
@@ -187,19 +191,19 @@ void drawEye(
         if (d < IRIS_MAP_HEIGHT) {
           a = (IRIS_MAP_WIDTH * (p >> 7)) / 512;
           p = ramIrisStore[d * IRIS_MAP_WIDTH + a];
-        } else if (scleraY < SCLERA_HEIGHT && scleraX < SCLERA_WIDTH) {
-          p = scleraRow[scleraX];
+        } else if (curScleraY < SCLERA_HEIGHT && curScleraX < SCLERA_WIDTH) {
+          p = scleraRow[curScleraX];
         } else {
           p = 0;
         }
       }
       rowBuf[screenX] = (uint16_t)(p >> 8 | p << 8);
     }
-    tft.setAddrWindow(eye[e].xposition, eye[e].yposition + screenY, SCREEN_WIDTH, 1);
+    tft.setAddrWindow(eye[e].xposition, eye[e].yposition + screenY, TFT_WIDTH, 1);
 #ifdef USE_DMA
-    tft.pushPixelsDMA(rowBuf, SCREEN_WIDTH);
+    tft.pushPixelsDMA(rowBuf, TFT_WIDTH);
 #else
-    tft.pushPixels(rowBuf, SCREEN_WIDTH);
+    tft.pushPixels(rowBuf, TFT_WIDTH);
 #endif
   }
   tft.endWrite();
@@ -429,7 +433,7 @@ void frame(uint16_t iScale) // 虹膜缩放值（0-1023）
   if (eyeX > (SCLERA_WIDTH - 128)) eyeX = (SCLERA_WIDTH - 128);
 
   // 上眼皮随瞳孔位置略微开合（TRACKING）
-  static uint8_t uThreshold = 128;
+  static uint8_t uThreshold = 0;
   uint8_t        lThreshold, n;
 #ifdef TRACKING
   int16_t sampleX = SCLERA_WIDTH  / 2 - (eyeX / 2),
