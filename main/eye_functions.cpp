@@ -12,12 +12,19 @@
 
 #include <math.h>
 
+#include "esp_log.h"
+
 #include "eyes_common.h"
 
-// 眼皮遮罩放内部 RAM（SPI 屏活跃时勿读 Flash/PSRAM）
-static uint8_t s_upper_lid[SCREEN_WIDTH * SCREEN_HEIGHT];
-static uint8_t s_lower_lid[SCREEN_WIDTH * SCREEN_HEIGHT];
-static bool s_lid_ready = false;
+static const char *kEyeTag = "eye";
+
+// 纹理须在 display_init 之前载入内部 RAM；SPI 刷屏时读 Flash/PSRAM 会卡死
+static uint8_t  s_upper_lid[SCREEN_WIDTH * SCREEN_HEIGHT];
+static uint8_t  s_lower_lid[SCREEN_WIDTH * SCREEN_HEIGHT];
+static uint16_t s_sclera_ram[SCLERA_HEIGHT * SCLERA_WIDTH];
+static uint16_t s_polar_ram[IRIS_WIDTH * IRIS_HEIGHT];
+static uint16_t s_iris_ram[IRIS_MAP_HEIGHT * IRIS_MAP_WIDTH];
+static bool     s_textures_ready = false;
 
 // 眼球移动缓入缓出曲线：3*t^2 - 2*t^3
 const uint8_t ease[] = {
@@ -42,11 +49,24 @@ const uint8_t ease[] = {
 // 初始化眼睛 ---------------------------------------------------------
 void initEyes(void)
 {
-  if (!s_lid_ready) {
+  if (!s_textures_ready) {
     const size_t lid_bytes = (size_t)SCREEN_WIDTH * SCREEN_HEIGHT;
+    const size_t sclera_bytes = (size_t)SCLERA_HEIGHT * SCLERA_WIDTH * sizeof(uint16_t);
+    const size_t polar_bytes = (size_t)IRIS_WIDTH * IRIS_HEIGHT * sizeof(uint16_t);
+    const size_t iris_bytes = (size_t)IRIS_MAP_HEIGHT * IRIS_MAP_WIDTH * sizeof(uint16_t);
+
     memcpy_P(s_upper_lid, upper, lid_bytes);
     memcpy_P(s_lower_lid, lower, lid_bytes);
-    s_lid_ready = true;
+    memcpy_P(s_sclera_ram, sclera, sclera_bytes);
+    memcpy_P(s_polar_ram, polar, polar_bytes);
+    memcpy_P(s_iris_ram, iris, iris_bytes);
+    s_textures_ready = true;
+
+    ESP_LOGI(kEyeTag,
+             "textures RAM: lid %u sclera %u polar %u iris %u (total %u)",
+             (unsigned)lid_bytes * 2, (unsigned)sclera_bytes, (unsigned)polar_bytes,
+             (unsigned)iris_bytes,
+             (unsigned)(lid_bytes * 2 + sclera_bytes + polar_bytes + iris_bytes));
   }
 
   // 根据 config.h 中的 eyeInfo 列表初始化每只眼睛
@@ -74,7 +94,7 @@ void drawEye(
   uint32_t  uT,      // 上眼皮遮罩阈值
   uint32_t  lT) {    // 下眼皮遮罩阈值
 
-  if (!s_lid_ready) {
+  if (!s_textures_ready) {
     return;
   }
 
@@ -87,12 +107,7 @@ void drawEye(
   uint32_t screenX, scleraXsave;
   int32_t  irisX, irisY;
   int16_t  lidX, dlidX;
-  uint32_t p;
-
-  int32_t pupil_r = ((int32_t)IRIS_MAP_HEIGHT * (IRIS_WIDTH / 2)) / max((int32_t)iScale, (int32_t)1);
-  if (pupil_r < 12) pupil_r = 12;
-  if (pupil_r > (IRIS_WIDTH / 2 - 4)) pupil_r = IRIS_WIDTH / 2 - 4;
-  const uint32_t pupil_r2 = (uint32_t)(pupil_r * pupil_r);
+  uint32_t p, a, d;
 
   scleraXsave = scleraX;
   const int32_t irisY0 = (int32_t)scleraY - (SCLERA_HEIGHT - IRIS_HEIGHT) / 2;
@@ -117,11 +132,20 @@ void drawEye(
           p = 0;
         } else if ((irisY < 0) || (irisY >= IRIS_HEIGHT) ||
                    (irisX < 0) || (irisX >= IRIS_WIDTH)) {
-          p = (scleraYcur < SCLERA_HEIGHT && scleraX < SCLERA_WIDTH) ? 0xFFE0 : 0;
+          p = (scleraYcur < SCLERA_HEIGHT && scleraX < SCLERA_WIDTH)
+                  ? s_sclera_ram[scleraYcur * SCLERA_WIDTH + scleraX]
+                  : 0;
         } else {
-          const int32_t px = (int32_t)irisX - (IRIS_WIDTH / 2);
-          const int32_t py = (int32_t)irisY - (IRIS_HEIGHT / 2);
-          p = ((uint32_t)(px * px + py * py) < pupil_r2) ? 0x0000 : 0xFFE0;
+          p = s_polar_ram[(uint32_t)irisY * IRIS_WIDTH + (uint32_t)irisX];
+          d = (iScale * (p & 0x7F)) / 128;
+          if (d < IRIS_MAP_HEIGHT) {
+            a = (IRIS_MAP_WIDTH * (p >> 7)) / 512;
+            p = s_iris_ram[d * IRIS_MAP_WIDTH + a];
+          } else {
+            p = (scleraYcur < SCLERA_HEIGHT && scleraX < SCLERA_WIDTH)
+                    ? s_sclera_ram[scleraYcur * SCLERA_WIDTH + scleraX]
+                    : 0;
+          }
         }
         row[screenX] = (uint16_t)p;
       }
@@ -353,7 +377,7 @@ void frame(uint16_t iScale) // 虹膜缩放值（0-1023）
   // 上眼皮随瞳孔位置略微开合（TRACKING）
   static uint8_t uThreshold = 128;
   uint8_t        lThreshold, n;
-#ifdef TRACKING
+#if defined(TRACKING) && !defined(EYE_NO_TRACKING)
   int16_t sampleX = SCLERA_WIDTH  / 2 - (eyeX / 2), // 减弱 X 方向影响
           sampleY = SCLERA_HEIGHT / 2 - (eyeY + IRIS_HEIGHT / 4);
   if (sampleX < 0) sampleX = 0;

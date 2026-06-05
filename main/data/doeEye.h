@@ -1,5 +1,6 @@
 #define IRIS_MIN 80
 #define IRIS_MAX 250
+#define EYE_NO_TRACKING
 
 #define SCLERA_WIDTH  180
 #define SCLERA_HEIGHT 180

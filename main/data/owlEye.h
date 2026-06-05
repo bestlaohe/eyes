@@ -1,5 +1,6 @@
 #define IRIS_MIN 20
 #define IRIS_MAX 100
+#define EYE_NO_TRACKING
 
 #define IRIS_MAP_WIDTH  1
 #define IRIS_MAP_HEIGHT 16
