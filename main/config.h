@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "sdkconfig.h"
 
@@ -58,8 +58,8 @@
 #define TFT2_CS            21
 #define TFT_1_ROT          0
 #define TFT_2_ROT          3
-#define EYE_1_XPOSITION    16
-#define EYE_1_YPOSITION    16
+#define EYE_1_XPOSITION    0
+#define EYE_1_YPOSITION    0
 #define EYE_2_XPOSITION    0
 #define EYE_2_YPOSITION    0
 

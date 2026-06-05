@@ -105,45 +105,49 @@ void drawEye(
 
   const int bandRows = display_dma_strip_rows();
   uint32_t screenX, scleraXsave;
-  int32_t  irisX, irisY;
-  int16_t  lidX, dlidX;
+  int32_t  irisY;
   uint32_t p, a, d;
 
   scleraXsave = scleraX;
   const int32_t irisY0 = (int32_t)scleraY - (SCLERA_HEIGHT - IRIS_HEIGHT) / 2;
-  dlidX       = e ? 1 : -1;
 
-  for (int32_t bandY = 0; bandY < (int32_t)SCREEN_HEIGHT; bandY += bandRows) {
-    const int32_t bandH = (int32_t)((bandY + bandRows <= (int32_t)SCREEN_HEIGHT)
+  for (int32_t bandY = 0; bandY < (int32_t)LCD_HEIGHT; bandY += bandRows) {
+    const int32_t bandH = (int32_t)((bandY + bandRows <= (int32_t)LCD_HEIGHT)
                                         ? bandRows
-                                        : ((int32_t)SCREEN_HEIGHT - bandY));
+                                        : ((int32_t)LCD_HEIGHT - bandY));
     for (int32_t sy = 0; sy < bandH; sy++) {
       const uint32_t screenY = (uint32_t)(bandY + sy);
-      const uint32_t scleraYcur = scleraY + screenY;
-      irisY = irisY0 + (int32_t)screenY;
-      scleraX = scleraXsave;
-      irisX   = scleraXsave - (SCLERA_WIDTH - IRIS_WIDTH) / 2;
-      lidX    = e ? 0 : (int16_t)(SCREEN_WIDTH - 1);
-      uint16_t *row = &strip[(size_t)sy * SCREEN_WIDTH];
-      const uint8_t *urow = s_upper_lid + screenY * SCREEN_WIDTH;
-      const uint8_t *lrow = s_lower_lid + screenY * SCREEN_WIDTH;
-      for (screenX = 0; screenX < SCREEN_WIDTH; screenX++, scleraX++, irisX++, lidX += dlidX) {
+      const uint32_t texY =
+          (screenY * (uint32_t)SCREEN_HEIGHT) / (uint32_t)LCD_HEIGHT;
+      const uint32_t scleraYcur = scleraY + texY;
+      irisY = irisY0 + (int32_t)texY;
+      uint16_t *row = &strip[(size_t)sy * LCD_WIDTH];
+      const uint8_t *urow = s_upper_lid + texY * SCREEN_WIDTH;
+      const uint8_t *lrow = s_lower_lid + texY * SCREEN_WIDTH;
+      for (screenX = 0; screenX < (uint32_t)LCD_WIDTH; screenX++) {
+        const uint32_t texX =
+            (screenX * (uint32_t)SCREEN_WIDTH) / (uint32_t)LCD_WIDTH;
+        const int16_t lidX =
+            e ? (int16_t)texX : (int16_t)(SCREEN_WIDTH - 1 - texX);
+        const uint32_t curScleraX = scleraXsave + texX;
+        const int32_t curIrisX =
+            (int32_t)scleraXsave - (SCLERA_WIDTH - IRIS_WIDTH) / 2 + (int32_t)texX;
         if ((lrow[lidX] <= lT) || (urow[lidX] <= uT)) {
           p = 0;
         } else if ((irisY < 0) || (irisY >= IRIS_HEIGHT) ||
-                   (irisX < 0) || (irisX >= IRIS_WIDTH)) {
-          p = (scleraYcur < SCLERA_HEIGHT && scleraX < SCLERA_WIDTH)
-                  ? s_sclera_ram[scleraYcur * SCLERA_WIDTH + scleraX]
+                   (curIrisX < 0) || (curIrisX >= IRIS_WIDTH)) {
+          p = (scleraYcur < SCLERA_HEIGHT && curScleraX < SCLERA_WIDTH)
+                  ? s_sclera_ram[scleraYcur * SCLERA_WIDTH + curScleraX]
                   : 0;
         } else {
-          p = s_polar_ram[(uint32_t)irisY * IRIS_WIDTH + (uint32_t)irisX];
+          p = s_polar_ram[(uint32_t)irisY * IRIS_WIDTH + (uint32_t)curIrisX];
           d = (iScale * (p & 0x7F)) / 128;
           if (d < IRIS_MAP_HEIGHT) {
             a = (IRIS_MAP_WIDTH * (p >> 7)) / 512;
             p = s_iris_ram[d * IRIS_MAP_WIDTH + a];
           } else {
-            p = (scleraYcur < SCLERA_HEIGHT && scleraX < SCLERA_WIDTH)
-                    ? s_sclera_ram[scleraYcur * SCLERA_WIDTH + scleraX]
+            p = (scleraYcur < SCLERA_HEIGHT && curScleraX < SCLERA_WIDTH)
+                    ? s_sclera_ram[scleraYcur * SCLERA_WIDTH + curScleraX]
                     : 0;
           }
         }
@@ -153,7 +157,7 @@ void drawEye(
     display_blit_rgb565(e,
                          eye[e].xposition,
                          eye[e].yposition + (int16_t)bandY,
-                         SCREEN_WIDTH, (int16_t)bandH, strip);
+                         LCD_WIDTH, (int16_t)bandH, strip);
     yield();
   }
 }
