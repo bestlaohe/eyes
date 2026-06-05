@@ -39,8 +39,6 @@ void setup(void) {
   digitalWrite(DISPLAY_BACKLIGHT, LOW);
 #endif
 
-  user_setup();
-
   if (!display_init()) {
     ESP_LOGE(TAG, "display_init failed");
   }

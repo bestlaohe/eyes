@@ -42,5 +42,3 @@ extern void drawEye(uint8_t e, uint32_t iScale, uint32_t scleraX, uint32_t scler
                     uint32_t uT, uint32_t lT);
 extern void frame(uint16_t iScale);
 
-extern void user_setup(void);
-extern void user_loop(void);

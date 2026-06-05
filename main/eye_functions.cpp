@@ -407,8 +407,4 @@ void frame(uint16_t iScale) // 虹膜缩放值（0-1023）
   }
 
   drawEye(eyeIndex, iScale, eyeX, eyeY, n, lThreshold);
-
-  if (eyeIndex == (NUM_EYES - 1)) {
-    user_loop(); // 最后一只眼睛画完后调用用户代码
-  }
 }
