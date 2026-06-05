@@ -18,7 +18,7 @@
 // IMPORTANT: if you update TFT_eSPI your setup file and link below will be lost!
 // >>>>>>>>>>>>>>>>> Keep a copy of your setup file safe! <<<<<<<<<<<<<<<<<<<<<<<<<<<
 
-// eyes 项目：屏幕引脚/驱动配置在 main/screen_config.h（更新库后需保留此行）
+// eyes 项目：用户配置见 main/config.h；本行供 TFT_eSPI 编译（更新库后需保留）
 #include "../../main/screen_config.h"
 #define USER_SETUP_LOADED
 

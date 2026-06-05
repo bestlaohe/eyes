@@ -2,7 +2,6 @@
 
 #include <string.h>
 
-#include "display_config.h"
 #include "eyes_common.h"
 
 #include "driver/gpio.h"

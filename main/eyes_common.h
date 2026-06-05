@@ -14,6 +14,8 @@ typedef struct {
 #include "config.h"
 #include "display_port.h"
 
+extern eyeInfo_t eyeInfo[];
+
 // 眨眼状态机
 #define NOBLINK 0   // 未眨眼
 #define ENBLINK 1   // 正在闭眼
