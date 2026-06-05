@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 // 在这里选择的Pin基于Teensy 3.x项目的原始Adafruit Learning System指南。
 
@@ -10,16 +10,16 @@
 #define SYMMETRICAL_EYELID // 对称眼皮
 
 // 启用以下其中一个#include -- 各种眼睛的大量图形表：
-//#include "data/defaultEye.h"      // 标准的类似人类的榛果色眼睛 -或-
-//#include "data/dragonEye.h"     // 炽热的龙/恶魔眼睛，瞳孔裂缝 -或-
-//#include "data/noScleraEye.h"   // 大虹膜，无眼珠 -或-
-//#include "data/goatEye.h"       // 水平瞳孔的山羊/克拉慕斯之眼 -或-
-//#include "data/newtEye.h"       // 火蜥蜴之眼 -或-
-//#include "data/terminatorEye.h" // 终结者之眼!快上直升机！
-#include "data/catEye.h"        // 卡通猫眼（平面”2D“颜色）
-//#include "data/owlEye.h"        // 室内猫眼（禁用追踪）
-//#include "data/naugaEye.h"      // Nauga的滚动眼睛（禁用追踪）
-//#include "data/doeEye.h"        // 卡通鹿眼（禁用追踪）
+//#include "data/defaultEye.h"
+//#include "data/dragonEye.h"
+//#include "data/noScleraEye.h"
+//#include "data/goatEye.h"
+//#include "data/newtEye.h"
+#include "data/terminatorEye.h"
+//#include "data/defaultEye.h"
+//#include "data/owlEye.h"
+//#include "data/naugaEye.h"
+//#include "data/doeEye.h"
 
 // 显示器硬件设置（BOE 0.71" GC9D01 160x160） -------------------
 // BL=35  DC=36  CS=37  CL=38  DA=39  RST=40
@@ -82,3 +82,6 @@ extern eyeInfo_t eyeInfo[];
 #if !defined(IRIS_MAX)
   #define IRIS_MAX      130 // 在最黑暗的光线下的虹膜大小（0-1023）
 #endif
+
+
+

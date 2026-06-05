@@ -52,6 +52,7 @@ extern uint16_t pbuffer[BUFFERS][BUFFER_SIZE];
 extern bool dmaBuf;
 extern uint32_t startTime;
 
+extern void loadEyeTextures(void);
 extern void initEyes(void);
 extern void updateEye(void);
 extern void drawEye(uint8_t e, uint32_t iScale, uint32_t scleraX, uint32_t scleraY,

@@ -28,10 +28,12 @@ void setup(void) {
   // 用户调用其他功能
   user_setup();
 
-  // 初始化眼睛，这将为tft.init()设置所有芯片选择为低电平
+  // 初始化眼睛 GPIO，并在 tft.init 前从 Flash 复制纹理
   initEyes();
 
-  // 初始化TFT
+  Serial.println("加载纹理");
+  loadEyeTextures();
+
   Serial.println("初始化显示器");
   tft.init();
 
@@ -39,7 +41,6 @@ void setup(void) {
   tft.initDMA();
 #endif
 
-  // 将芯片选择引脚设置为高电平，以便可以单独配置显示器
   digitalWrite(eye[0].tft_cs, HIGH);
   if (NUM_EYES > 1) digitalWrite(eye[1].tft_cs, HIGH);
 

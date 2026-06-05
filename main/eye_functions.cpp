@@ -11,7 +11,87 @@
 //--------------------------------------------------------------------------
 
 #include <math.h>
+#include <string.h>
+#include <esp_flash.h>
+#include <spi_flash_mmap.h>
+#include <esp_partition.h>
 #include "eyes_common.h"
+
+static uint8_t  ramLidStore[2 * SCREEN_WIDTH * SCREEN_HEIGHT];
+static uint16_t ramPolarStore[IRIS_WIDTH * IRIS_HEIGHT];
+static uint16_t ramIrisStore[IRIS_MAP_WIDTH * IRIS_MAP_HEIGHT];
+
+static const esp_partition_t *scleraPart = nullptr;
+static size_t                 scleraPartOff = 0;
+static uint16_t               scleraRow[SCLERA_WIDTH];
+
+#define FLASH_STAGE 4096
+static uint8_t flashStage[FLASH_STAGE];
+
+static void flashLoadChunked(void *dst, const void *src, size_t bytes, const char *tag)
+{
+  size_t phys = spi_flash_cache2phys(src);
+  if (phys == (size_t)SPI_FLASH_CACHE2PHYS_FAIL) {
+    Serial.printf("textures: %s cache2phys fail\n", tag);
+    return;
+  }
+
+  const esp_partition_t *part =
+    esp_partition_find_first(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_APP_FACTORY, NULL);
+  if (!part) {
+    Serial.printf("textures: %s no factory part\n", tag);
+    return;
+  }
+  size_t part_off = phys - part->address;
+
+  for (size_t off = 0; off < bytes; off += FLASH_STAGE) {
+    size_t n = bytes - off;
+    if (n > FLASH_STAGE) n = FLASH_STAGE;
+    esp_err_t err = esp_partition_read(part, part_off + off, flashStage, n);
+    if (err != ESP_OK) {
+      Serial.printf("textures: %s read err %d at %u\n", tag, (int)err, (unsigned)off);
+      return;
+    }
+    memcpy((uint8_t *)dst + off, flashStage, n);
+    yield();
+  }
+}
+
+static bool texReady = false;
+
+void loadEyeTextures(void)
+{
+  if (texReady) return;
+
+  const size_t nPolar = (size_t)IRIS_WIDTH * IRIS_HEIGHT;
+  const size_t nLid   = (size_t)SCREEN_WIDTH * SCREEN_HEIGHT;
+  const size_t nIris  = (size_t)IRIS_MAP_WIDTH * IRIS_MAP_HEIGHT;
+
+  scleraPart = esp_partition_find_first(ESP_PARTITION_TYPE_APP,
+                                        ESP_PARTITION_SUBTYPE_APP_FACTORY, NULL);
+  size_t phys = spi_flash_cache2phys(sclera);
+  if (phys == (size_t)SPI_FLASH_CACHE2PHYS_FAIL || !scleraPart) {
+    Serial.println("textures: sclera flash map fail");
+    return;
+  }
+  scleraPartOff = phys - scleraPart->address;
+
+  Serial.println("textures: polar...");
+  flashLoadChunked(ramPolarStore, polar, nPolar * sizeof(uint16_t), "polar");
+  Serial.println("textures: polar ok");
+
+  Serial.println("textures: iris...");
+  flashLoadChunked(ramIrisStore, iris, nIris * sizeof(uint16_t), "iris");
+  Serial.println("textures: iris ok");
+
+  Serial.println("textures: lids...");
+  flashLoadChunked(ramLidStore, lower, nLid, "lower");
+  flashLoadChunked(ramLidStore + nLid, upper, nLid, "upper");
+  Serial.println("textures: lids ok");
+
+  texReady = true;
+  Serial.println("textures: ready");
+}
 
 // 眼球移动缓入缓出曲线：3*t^2 - 2*t^3
 const uint8_t ease[] = {
@@ -48,7 +128,7 @@ void initEyes(void)
     eye[e].yposition   = eyeInfo[e].yposition;
 
     pinMode(eye[e].tft_cs, OUTPUT);
-    digitalWrite(eye[e].tft_cs, LOW);
+    digitalWrite(eye[e].tft_cs, HIGH); // CS 默认高
 
     // 若定义了单眼 wink 引脚，则一并初始化
     if (eyeInfo[e].wink >= 0) pinMode(eyeInfo[e].wink, INPUT_PULLUP);
@@ -72,54 +152,57 @@ void drawEye(
   uint32_t screenX, scleraXsave;
   int32_t  irisX, irisY;
   int16_t  lidX, dlidX;
-  uint32_t p;
+  uint32_t p, a, d;
 
-  scleraXsave = scleraX; // 每行开始时恢复 X 偏移
+  if (!texReady) return;
+
+  scleraXsave = scleraX;
   irisY       = scleraY - (SCLERA_HEIGHT - IRIS_HEIGHT) / 2;
-  dlidX       = e ? 1 : -1; // 双眼时眼皮贴图左右镜像
+  dlidX       = e ? 1 : -1;
 
-  // ESP32-S3：先算完一行再推送，避免 Flash 大表读取与 HSPI 冲突
   digitalWrite(eye[e].tft_cs, LOW);
+  tft.startWrite();
   for (uint32_t screenY = 0; screenY < SCREEN_HEIGHT; screenY++, scleraY++, irisY++) {
+    if (scleraY < SCLERA_HEIGHT && scleraPart) {
+      size_t rowOff = scleraPartOff + (size_t)scleraY * SCLERA_WIDTH * sizeof(uint16_t);
+      esp_partition_read(scleraPart, rowOff, scleraRow, SCLERA_WIDTH * sizeof(uint16_t));
+    }
     scleraX = scleraXsave;
     irisX   = scleraXsave - (SCLERA_WIDTH - IRIS_WIDTH) / 2;
     lidX    = e ? 0 : (int16_t)(SCREEN_WIDTH - 1);
     for (screenX = 0; screenX < SCREEN_WIDTH; screenX++, scleraX++, irisX++, lidX += dlidX) {
-      if ((pgm_read_byte(lower + screenY * SCREEN_WIDTH + lidX) <= lT) ||
-          (pgm_read_byte(upper + screenY * SCREEN_WIDTH + lidX) <= uT)) {
-        p = 0; // 被眼皮遮住
+      if ((ramLidStore[SCREEN_WIDTH * SCREEN_HEIGHT + screenY * SCREEN_WIDTH + lidX] <= lT) ||
+          (ramLidStore[screenY * SCREEN_WIDTH + lidX] <= uT)) {
+        p = 0;
       } else if ((irisY < 0) || (irisY >= IRIS_HEIGHT) ||
                  (irisX < 0) || (irisX >= IRIS_WIDTH)) {
         if (scleraY < SCLERA_HEIGHT && scleraX < SCLERA_WIDTH) {
-          p = 0xFFE0; // catEye 巩膜为纯色，避免读取巨大 sclera[] 表
+          p = scleraRow[scleraX];
         } else {
           p = 0;
         }
       } else {
-        int32_t px = (int32_t)irisX - (IRIS_WIDTH / 2);
-        int32_t py = (int32_t)irisY - (IRIS_HEIGHT / 2);
-        // iScale 越小瞳孔越大，与原 polar 表语义一致
-        int32_t r = ((int32_t)IRIS_MAP_HEIGHT * (IRIS_WIDTH / 2)) / max((int32_t)iScale, (int32_t)1);
-        if (r < 12) r = 12;
-        if (r > (IRIS_WIDTH / 2 - 4)) r = IRIS_WIDTH / 2 - 4;
-        if ((uint32_t)(px * px + py * py) < (uint32_t)(r * r)) {
-          p = 0x0000; // 瞳孔
+        p = ramPolarStore[irisY * IRIS_WIDTH + irisX];
+        d = (iScale * (p & 0x7F)) / 128;
+        if (d < IRIS_MAP_HEIGHT) {
+          a = (IRIS_MAP_WIDTH * (p >> 7)) / 512;
+          p = ramIrisStore[d * IRIS_MAP_WIDTH + a];
+        } else if (scleraY < SCLERA_HEIGHT && scleraX < SCLERA_WIDTH) {
+          p = scleraRow[scleraX];
         } else {
-          p = 0xFFE0; // 虹膜
+          p = 0;
         }
       }
       rowBuf[screenX] = (uint16_t)(p >> 8 | p << 8);
     }
-    tft.startWrite();
     tft.setAddrWindow(eye[e].xposition, eye[e].yposition + screenY, SCREEN_WIDTH, 1);
 #ifdef USE_DMA
     tft.pushPixelsDMA(rowBuf, SCREEN_WIDTH);
 #else
     tft.pushPixels(rowBuf, SCREEN_WIDTH);
 #endif
-    tft.endWrite();
-    yield();
   }
+  tft.endWrite();
   digitalWrite(eye[e].tft_cs, HIGH);
 }
 
@@ -349,13 +432,12 @@ void frame(uint16_t iScale) // 虹膜缩放值（0-1023）
   static uint8_t uThreshold = 128;
   uint8_t        lThreshold, n;
 #ifdef TRACKING
-  int16_t sampleX = SCLERA_WIDTH  / 2 - (eyeX / 2), // 减弱 X 方向影响
+  int16_t sampleX = SCLERA_WIDTH  / 2 - (eyeX / 2),
           sampleY = SCLERA_HEIGHT / 2 - (eyeY + IRIS_HEIGHT / 4);
-  // 眼皮略不对称，取左右两点平均
   if (sampleY < 0) n = 0;
-  else            n = (pgm_read_byte(upper + sampleY * SCREEN_WIDTH + sampleX) +
-                         pgm_read_byte(upper + sampleY * SCREEN_WIDTH + (SCREEN_WIDTH - 1 - sampleX))) / 2;
-  uThreshold = (uThreshold * 3 + n) / 4; // 低通滤波
+  else n = (ramLidStore[SCREEN_WIDTH * SCREEN_HEIGHT + sampleY * SCREEN_WIDTH + sampleX] +
+            ramLidStore[SCREEN_WIDTH * SCREEN_HEIGHT + sampleY * SCREEN_WIDTH + (SCREEN_WIDTH - 1 - sampleX)]) / 2;
+  uThreshold = (uThreshold * 3 + n) / 4;
   lThreshold = 254 - uThreshold;         // 下眼皮受上眼皮牵连
 #else
   uThreshold = lThreshold = 0; // 不跟踪时眼皮完全睁开（除非眨眼）
