@@ -35,7 +35,7 @@
 
 #define DISPLAY_BACKLIGHT    LCD_PIN_BL
 #define BACKLIGHT_MAX        255
-#define BACKLIGHT_BRIGHTNESS 80
+#define BACKLIGHT_BRIGHTNESS 35
 
 // --- 屏上布局 / 片选 ---
 #define TFT1_CS            37

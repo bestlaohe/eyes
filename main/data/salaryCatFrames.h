@@ -2,8 +2,8 @@
 
 #include <stdint.h>
 
-#define SALARY_CAT_FRAME_W     80
-#define SALARY_CAT_FRAME_H     80
+#define SALARY_CAT_FRAME_W     100
+#define SALARY_CAT_FRAME_H     100
 #define SALARY_CAT_FRAME_COUNT 7
 #define SALARY_CAT_FRAME_MS    160
 #define SALARY_CAT_FRAME_BYTES (SALARY_CAT_FRAME_W * SALARY_CAT_FRAME_H * 2U)
