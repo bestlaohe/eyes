@@ -2,7 +2,6 @@
 
 #include <Arduino.h>
 #include <math.h>
-#include <string.h>
 
 #include "display_port.h"
 #include "esp_log.h"
@@ -14,7 +13,6 @@ static const char *TAG = "heart";
 static float s_centroid_x = 0.0f;
 static float s_centroid_y = 0.0f;
 
-// 心形隐式方程：(x²+y²-1)³ - x²y³ ≤ 0
 static bool heart_inside(float x, float y) {
   const float a = x * x + y * y - 1.0f;
   return (a * a * a - x * x * y * y * y) <= 0.0f;
@@ -43,7 +41,6 @@ static void heart_compute_centroid(void) {
   }
 }
 
-// 屏幕像素 → 心形坐标（以屏幕中心为缩放原点）
 static void heart_map_pixel(int32_t px, int32_t py, float radius, float *hx, float *hy) {
   const float scr_cx =
       ((float)LCD_WIDTH - 1.0f) * 0.5f + (float)HEART_CENTER_X;
@@ -54,7 +51,6 @@ static void heart_map_pixel(int32_t px, int32_t py, float radius, float *hx, flo
   *hy = s_centroid_y - ((float)py - scr_cy) / radius;
 }
 
-// 心跳缩放：双拍（咚-咚-停）
 static float heart_beat_scale(uint32_t ms) {
   const uint32_t period = HEART_BEAT_MS;
   const uint32_t t      = ms % period;
@@ -74,17 +70,47 @@ static float heart_beat_scale(uint32_t ms) {
   return 1.0f;
 }
 
+static float clampf(float v, float lo, float hi) {
+  if (v < lo) {
+    return lo;
+  }
+  if (v > hi) {
+    return hi;
+  }
+  return v;
+}
+
+static uint16_t lerp_rgb565(uint16_t c0, uint16_t c1, float t) {
+  t = clampf(t, 0.0f, 1.0f);
+  const uint8_t r0 = (uint8_t)((c0 >> 11) & 0x1F);
+  const uint8_t g0 = (uint8_t)((c0 >> 5) & 0x3F);
+  const uint8_t b0 = (uint8_t)(c0 & 0x1F);
+  const uint8_t r1 = (uint8_t)((c1 >> 11) & 0x1F);
+  const uint8_t g1 = (uint8_t)((c1 >> 5) & 0x3F);
+  const uint8_t b1 = (uint8_t)(c1 & 0x1F);
+  const uint8_t r  = (uint8_t)((float)r0 + ((float)r1 - (float)r0) * t);
+  const uint8_t g  = (uint8_t)((float)g0 + ((float)g1 - (float)g0) * t);
+  const uint8_t b  = (uint8_t)((float)b0 + ((float)b1 - (float)b0) * t);
+  return (uint16_t)(((uint16_t)r << 11) | ((uint16_t)g << 5) | (uint16_t)b);
+}
+
+// 4 点采样抗锯齿；内部纯色，亮度不随心跳变化
 static uint16_t heart_pixel_color(float hx, float hy) {
-  if (heart_inside(hx, hy)) {
+  const float o = HEART_AA_SIZE * 0.35f;
+  float cov     = 0.0f;
+  cov += heart_inside(hx - o, hy - o) ? 1.0f : 0.0f;
+  cov += heart_inside(hx + o, hy - o) ? 1.0f : 0.0f;
+  cov += heart_inside(hx - o, hy + o) ? 1.0f : 0.0f;
+  cov += heart_inside(hx + o, hy + o) ? 1.0f : 0.0f;
+  cov *= 0.25f;
+
+  if (cov <= 0.0f) {
+    return 0x0000;
+  }
+  if (cov >= 1.0f) {
     return HEART_COLOR;
   }
-
-  const float tx = s_centroid_x + (hx - s_centroid_x) / HEART_GLOW_SCALE;
-  const float ty = s_centroid_y + (hy - s_centroid_y) / HEART_GLOW_SCALE;
-  if (heart_inside(tx, ty)) {
-    return HEART_GLOW_COLOR;
-  }
-  return 0x0000;
+  return lerp_rgb565(0x0000, HEART_COLOR, cov);
 }
 
 static void heart_draw(float scale) {
@@ -129,6 +155,5 @@ void heart_init(void) {
 }
 
 void heart_update(void) {
-  const float scale = heart_beat_scale(millis());
-  heart_draw(scale);
+  heart_draw(heart_beat_scale(millis()));
 }

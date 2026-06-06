@@ -46,12 +46,11 @@
 #define LH_WINK_PIN        -1
 
 // --- 爱心跳动 ---
-#define HEART_COLOR        0xF800   // 红
-#define HEART_GLOW_COLOR   0xA000   // 暗红柔光
-#define HEART_BASE_RADIUS  48.0f    // 基准大小（像素）
-#define HEART_GLOW_SCALE   1.18f    // 光晕外扩
-#define HEART_BEAT_MS      850      // 一次心跳周期（毫秒）
-#define HEART_BEAT_AMP     0.14f    // 第一拍幅度
-#define HEART_BEAT_AMP2    0.07f    // 第二拍幅度
-#define HEART_CENTER_X     0        // 微调中心（像素，正=右移）
-#define HEART_CENTER_Y     0        // 微调中心（像素，正=下移）
+#define HEART_COLOR        0xF800   // 纯红
+#define HEART_BASE_RADIUS  40.0f
+#define HEART_AA_SIZE      0.045f   // 边缘抗锯齿
+#define HEART_BEAT_MS      850
+#define HEART_BEAT_AMP     0.16f    // 第一拍缩放幅度
+#define HEART_BEAT_AMP2    0.08f    // 第二拍缩放幅度
+#define HEART_CENTER_X     0
+#define HEART_CENTER_Y     0
