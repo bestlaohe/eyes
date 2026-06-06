@@ -3,7 +3,7 @@
 #include "sdkconfig.h"
 
 // =============================================================================
-// 心跳模式配置（xintiao 分支）
+// 月薪猫 GIF 动画（yuexinmao 分支）
 // =============================================================================
 
 // --- GC9D01 屏 160×160 + SPI（esp_lcd）---
@@ -45,12 +45,5 @@
 #define NUM_EYES           1
 #define LH_WINK_PIN        -1
 
-// --- 爱心跳动 ---
-#define HEART_COLOR        0xF800   // 纯红
-#define HEART_BASE_RADIUS  40.0f
-#define HEART_AA_SIZE      0.045f   // 边缘抗锯齿
-#define HEART_BEAT_MS      850
-#define HEART_BEAT_AMP     0.16f    // 第一拍缩放幅度
-#define HEART_BEAT_AMP2    0.08f    // 第二拍缩放幅度
-#define HEART_CENTER_X     0
-#define HEART_CENTER_Y     0
+// --- 月薪猫 GIF 动画 ---
+#define CAT_COLOR_BG        0x0000

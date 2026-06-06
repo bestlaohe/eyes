@@ -30,7 +30,8 @@ static esp_lcd_panel_io_handle_t s_io[NUM_EYES];
 static bool s_spi_bus_ready = false;
 
 static volatile bool s_color_done = true;
-static uint16_t *s_dma_buf = nullptr;
+static uint16_t s_dma_buf_storage[LCD_WIDTH * kBlitBandRows];
+static uint16_t *s_dma_buf = s_dma_buf_storage;
 
 static bool IRAM_ATTR on_color_trans_done(esp_lcd_panel_io_handle_t panel_io,
                                           esp_lcd_panel_io_event_data_t *edata,
@@ -54,9 +55,6 @@ static void display_wait_tx_done(void) {
 }
 
 static bool display_ensure_dma_buf(void) {
-  if (!s_dma_buf) {
-    s_dma_buf = (uint16_t *)heap_caps_malloc(kBandBytes, MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL);
-  }
   return s_dma_buf != nullptr;
 }
 
