@@ -3,7 +3,6 @@
 #include "esp_log.h"
 
 #include "config.h"
-#include "data/salaryCatFrames.h"
 #include "display_port.h"
 #include "salary_cat.h"
 

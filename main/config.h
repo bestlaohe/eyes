@@ -45,5 +45,17 @@
 #define NUM_EYES           1
 #define LH_WINK_PIN        -1
 
-// --- 月薪猫 GIF 动画 ---
-#define CAT_COLOR_BG        0x0000
+// --- 月薪猫 vol1 表情包（assets/salary_cat/vol1，共 62 个）---
+// 切换动画：改 SALARY_CAT_CLIP_INDEX 为 SALARY_CAT_VOL1_XX，再运行
+//   python tools/build_salary_cat_clips.py
+#include "data/salary_cat_vol1.h"
+
+#ifndef SALARY_CAT_CLIP_INDEX
+#define SALARY_CAT_CLIP_INDEX  SALARY_CAT_VOL1_00
+#endif
+
+#define SALARY_CAT_DRAW_W      100
+#define SALARY_CAT_DRAW_H      100
+#define SALARY_CAT_FRAME_STEP  4
+
+#define CAT_COLOR_BG           0x0000

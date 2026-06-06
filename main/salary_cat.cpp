@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "config.h"
+#include "data/salary_cat_vol1.h"
 #include "data/salaryCatFrames.h"
 #include "display_port.h"
 #include "esp_log.h"
@@ -53,7 +54,15 @@ void salary_cat_init(void) {
   s_anim_frame   = 0;
   s_last_step_ms = millis();
   salary_cat_draw(0);
-  ESP_LOGI(TAG, "playing %d frames @ %dms", SALARY_CAT_FRAME_COUNT, SALARY_CAT_FRAME_MS);
+  ESP_LOGI(TAG,
+           "vol1 clip %d/%d %s — %d frames %dx%d @ %dms",
+           SALARY_CAT_ACTIVE_CLIP_INDEX,
+           SALARY_CAT_VOL1_COUNT,
+           SALARY_CAT_VOL1_PATHS[SALARY_CAT_ACTIVE_CLIP_INDEX],
+           SALARY_CAT_FRAME_COUNT,
+           SALARY_CAT_FRAME_W,
+           SALARY_CAT_FRAME_H,
+           SALARY_CAT_FRAME_MS);
 }
 
 void salary_cat_update(void) {
