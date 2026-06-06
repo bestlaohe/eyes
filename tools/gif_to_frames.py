@@ -189,10 +189,18 @@ def convert_gif(
     )
     header.write_text("\n".join(meta), encoding="utf-8")
 
-    lines = [
-        f"// {clip_source or gif_path.name}",
-        "uint16_t gif_frames[GIF_FRAME_COUNT][GIF_FRAME_W * GIF_FRAME_H] = {",
-    ]
+    use_psram = read_int_macro("GIF_FRAMES_IN_PSRAM", 0) != 0
+    lines = [f"// {clip_source or gif_path.name}"]
+    if use_psram:
+        lines.append('#include "esp_attr.h"')
+        lines.append(
+            "EXT_RAM_BSS_ATTR uint16_t "
+            "gif_frames[GIF_FRAME_COUNT][GIF_FRAME_W * GIF_FRAME_H] = {"
+        )
+    else:
+        lines.append(
+            "uint16_t gif_frames[GIF_FRAME_COUNT][GIF_FRAME_W * GIF_FRAME_H] = {"
+        )
     for fi, pixels in enumerate(frames):
         lines.append(f"  // frame {fi}")
         for i in range(0, len(pixels), 12):

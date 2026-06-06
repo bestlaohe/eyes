@@ -48,8 +48,9 @@
 
 #define GIF_CLIP_INDEX     GIF_VOL1_CRY
 
-#define GIF_DRAW_W         80
-#define GIF_DRAW_H         80
+#define GIF_DRAW_W         66
+#define GIF_DRAW_H         66
 #define GIF_FRAME_STEP     1
-#define GIF_MAX_DRAM_KB    250
+#define GIF_FRAMES_IN_PSRAM 0
+#define GIF_MAX_DRAM_KB    260
 #define GIF_FPS_LOG_MS     1000
