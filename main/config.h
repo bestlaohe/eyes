@@ -54,8 +54,10 @@
 #define SALARY_CAT_CLIP_INDEX  SALARY_CAT_VOL1_00
 #endif
 
-#define SALARY_CAT_DRAW_W      100
-#define SALARY_CAT_DRAW_H      100
-#define SALARY_CAT_FRAME_STEP  4
+#define SALARY_CAT_DRAW_W         80
+#define SALARY_CAT_DRAW_H         80
+#define SALARY_CAT_FRAME_STEP     1    // 1=原速(40ms)；内存不够时构建脚本会自动加大
+#define SALARY_CAT_MAX_DRAM_KB    250  // 帧数据占用上限
+#define SALARY_CAT_FPS_LOG_MS     1000 // 串口刷新实际帧率间隔
 
 #define CAT_COLOR_BG           0x0000
