@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Convert a GIF to internal-RAM RGB565 frame data for ESP32 salary_cat player."""
+"""Build GIF frame data (RGB565 in DRAM) for ESP32 gif_player from assets/salary_cat/vol1."""
 
 from __future__ import annotations
 
@@ -12,11 +12,11 @@ from pathlib import Path
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_GIF = ROOT / "tools" / "salary_cat.gif"
+GIF_ASSET_DIR = ROOT / "assets" / "salary_cat" / "vol1"
 DATA_DIR = ROOT / "main" / "data"
 MANIFEST = ROOT / "assets" / "salary_cat" / "manifest.json"
 CONFIG_H = ROOT / "main" / "config.h"
-VOL1_HEADER = DATA_DIR / "salary_cat_vol1.h"
+CATALOG_H = DATA_DIR / "gif_catalog.h"
 
 
 def rgb_to_rgb565(r: int, g: int, b: int) -> int:
@@ -49,55 +49,51 @@ def vol1_gif_path(index: int) -> Path:
     return ROOT / "assets" / "salary_cat" / items[index]["file"]
 
 
-def write_vol1_header() -> int:
+def write_catalog_header() -> int:
     items = load_manifest_vol1()
     lines = [
         "#pragma once",
         "",
-        "// 由 tools/build_salary_cat_clips.py 根据 assets/salary_cat/manifest.json 生成",
-        f"#define SALARY_CAT_VOL1_COUNT {len(items)}",
+        "// 由 tools/gif_to_frames.py 根据 assets/salary_cat/manifest.json 生成",
+        f"#define GIF_VOL1_COUNT {len(items)}",
         "",
     ]
     for item in items:
         idx = item["index"]
-        stem = Path(item["file"]).stem.replace("-", "_")
-        macro = f"SALARY_CAT_VOL1_{idx:02d}"
+        macro = f"GIF_VOL1_{idx:02d}"
         lines.append(f"#define {macro} {idx}")
         lines.append(f'#define {macro}_FILE "{item["file"]}"')
     lines.append("")
-    lines.append("static const char *const SALARY_CAT_VOL1_PATHS[SALARY_CAT_VOL1_COUNT] = {")
+    lines.append("static const char *const GIF_VOL1_PATHS[GIF_VOL1_COUNT] = {")
     for item in items:
         lines.append(f'  "{item["file"]}",')
     lines.append("};")
     lines.append("")
-    VOL1_HEADER.write_text("\n".join(lines), encoding="utf-8")
-    print(f"Wrote {VOL1_HEADER.relative_to(ROOT)} ({len(items)} clips)")
+    cry_idx = next(
+        (item["index"] for item in items if item["file"] == "vol1/56_e0fd6e9a768f.gif"),
+        56,
+    )
+    lines.append("#define GIF_VOL1_CRY  " + str(cry_idx))
+    lines.append("")
+    CATALOG_H.write_text("\n".join(lines), encoding="utf-8")
+    print(f"Wrote {CATALOG_H.relative_to(ROOT)} ({len(items)} clips)")
     return len(items)
-
-
-def resolve_clip_index(raw: str, vol1_macros: dict[str, int]) -> int:
-    raw = raw.strip()
-    if raw.isdigit():
-        return int(raw)
-    if raw in vol1_macros:
-        return vol1_macros[raw]
-    raise ValueError(f"unknown clip selector: {raw}")
 
 
 def read_clip_index_from_config() -> int | None:
     if not CONFIG_H.exists():
         return None
     text = CONFIG_H.read_text(encoding="utf-8")
-    m = re.search(r"^#define\s+SALARY_CAT_CLIP_INDEX\s+(\S+)", text, re.MULTILINE)
+    m = re.search(r"^#define\s+GIF_CLIP_INDEX\s+(\S+)", text, re.MULTILINE)
     if not m:
         return None
     token = m.group(1)
     if token.isdigit():
         return int(token)
-    if VOL1_HEADER.exists():
+    if CATALOG_H.exists():
         macros = {}
-        for line in VOL1_HEADER.read_text(encoding="utf-8").splitlines():
-            mm = re.match(r"#define\s+(SALARY_CAT_VOL1_\d+)\s+(\d+)", line)
+        for line in CATALOG_H.read_text(encoding="utf-8").splitlines():
+            mm = re.match(r"#define\s+(GIF_VOL1_[A-Z0-9_]+)\s+(\d+)", line)
             if mm:
                 macros[mm.group(1)] = int(mm.group(2))
         if token in macros:
@@ -161,34 +157,33 @@ def convert_gif(
         frame_ms = 40
     frame_ms *= step
 
-    header = DATA_DIR / "salaryCatFrames.h"
-    inc = DATA_DIR / "salaryCatFrames.inc"
+    header = DATA_DIR / "gif_frames.h"
+    inc = DATA_DIR / "gif_frames.inc"
 
     meta: list[str] = [
         "#pragma once",
         "",
-        '#include "salary_cat_vol1.h"',
+        '#include "gif_catalog.h"',
         "",
         "#include <stdint.h>",
         "",
         f"// source: {clip_source or gif_path.name}",
     ]
     if clip_index is not None:
-        meta.append(f"#define SALARY_CAT_ACTIVE_CLIP_INDEX {clip_index}")
+        meta.append(f"#define GIF_ACTIVE_CLIP_INDEX {clip_index}")
     fps_x10 = (10000 + frame_ms // 2) // frame_ms if frame_ms else 0
     meta.extend(
         [
             "",
-            f"#define SALARY_CAT_FRAME_W     {width}",
-            f"#define SALARY_CAT_FRAME_H     {height}",
-            f"#define SALARY_CAT_FRAME_COUNT {len(frames)}",
-            f"#define SALARY_CAT_FRAME_MS    {frame_ms}",
-            f"#define SALARY_CAT_FRAME_STEP_USED {step}",
-            f"#define SALARY_CAT_FRAME_FPS_x10 {fps_x10}",
-            f"#define SALARY_CAT_FRAME_BYTES (SALARY_CAT_FRAME_W * SALARY_CAT_FRAME_H * 2U)",
+            f"#define GIF_FRAME_W     {width}",
+            f"#define GIF_FRAME_H     {height}",
+            f"#define GIF_FRAME_COUNT {len(frames)}",
+            f"#define GIF_FRAME_MS    {frame_ms}",
+            f"#define GIF_FRAME_STEP_USED {step}",
+            f"#define GIF_FRAME_FPS_x10 {fps_x10}",
+            f"#define GIF_FRAME_BYTES (GIF_FRAME_W * GIF_FRAME_H * 2U)",
             "",
-            "extern uint16_t salary_cat_frames[SALARY_CAT_FRAME_COUNT]"
-            "[SALARY_CAT_FRAME_W * SALARY_CAT_FRAME_H];",
+            "extern uint16_t gif_frames[GIF_FRAME_COUNT][GIF_FRAME_W * GIF_FRAME_H];",
             "",
         ]
     )
@@ -196,8 +191,7 @@ def convert_gif(
 
     lines = [
         f"// {clip_source or gif_path.name}",
-        "uint16_t salary_cat_frames[SALARY_CAT_FRAME_COUNT]"
-        "[SALARY_CAT_FRAME_W * SALARY_CAT_FRAME_H] = {",
+        "uint16_t gif_frames[GIF_FRAME_COUNT][GIF_FRAME_W * GIF_FRAME_H] = {",
     ]
     for fi, pixels in enumerate(frames):
         lines.append(f"  // frame {fi}")
@@ -220,24 +214,24 @@ def convert_gif(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--gif", type=Path, default=None, help="single GIF path")
-    parser.add_argument("--vol1-index", type=int, default=None, help="vol1 manifest index 0..61")
-    parser.add_argument("--gen-vol1-header", action="store_true", help="only regenerate salary_cat_vol1.h")
+    parser.add_argument("--gif", type=Path, default=None, help="assets/salary_cat/vol1 下的 GIF")
+    parser.add_argument("--vol1-index", type=int, default=None, help="vol1 index 0..61")
+    parser.add_argument("--gen-catalog", action="store_true", help="only regenerate gif_catalog.h")
     parser.add_argument("--width", type=int, default=None)
     parser.add_argument("--height", type=int, default=None)
-    parser.add_argument("--step", type=int, default=None, help="keep every Nth GIF frame")
+    parser.add_argument("--step", type=int, default=None)
     args = parser.parse_args()
 
-    if args.gen_vol1_header:
-        write_vol1_header()
+    if args.gen_catalog:
+        write_catalog_header()
         return 0
 
-    width = args.width if args.width is not None else read_int_macro("SALARY_CAT_DRAW_W", 100)
-    height = args.height if args.height is not None else read_int_macro("SALARY_CAT_DRAW_H", 100)
-    step = args.step if args.step is not None else read_int_macro("SALARY_CAT_FRAME_STEP", 1)
-    max_dram_kb = read_int_macro("SALARY_CAT_MAX_DRAM_KB", 240)
+    width = args.width if args.width is not None else read_int_macro("GIF_DRAW_W", 80)
+    height = args.height if args.height is not None else read_int_macro("GIF_DRAW_H", 80)
+    step = args.step if args.step is not None else read_int_macro("GIF_FRAME_STEP", 1)
+    max_dram_kb = read_int_macro("GIF_MAX_DRAM_KB", 240)
 
-    write_vol1_header()
+    write_catalog_header()
 
     clip_index: int | None = args.vol1_index
     gif_path = args.gif
@@ -246,12 +240,26 @@ def main() -> int:
     if clip_index is None:
         clip_index = read_clip_index_from_config()
 
-    if clip_index is not None:
+    if gif_path is not None:
+        gif_path = gif_path if gif_path.is_absolute() else ROOT / gif_path
+        try:
+            rel = gif_path.relative_to(GIF_ASSET_DIR)
+        except ValueError:
+            print(f"Only GIFs under {GIF_ASSET_DIR} are supported.", file=sys.stderr)
+            return 1
+        gif_path = GIF_ASSET_DIR / rel
+        clip_source = f"vol1/{rel.as_posix()}"
+        for item in load_manifest_vol1():
+            if item["file"] == clip_source:
+                clip_index = item["index"]
+                break
+    elif clip_index is not None:
         items = load_manifest_vol1()
         gif_path = vol1_gif_path(clip_index)
         clip_source = items[clip_index]["file"]
-    elif gif_path is None:
-        gif_path = DEFAULT_GIF
+    else:
+        print("Set GIF_CLIP_INDEX in main/config.h (e.g. GIF_VOL1_CRY).", file=sys.stderr)
+        return 1
 
     return convert_gif(
         gif_path,

@@ -1,8 +1,10 @@
 #include "display_port.h"
 
+#include <Arduino.h>
 #include <string.h>
 
-#include "eyes_common.h"
+#include "config.h"
+#include "display_panel.h"
 
 #include "driver/gpio.h"
 #include "driver/spi_master.h"
@@ -88,7 +90,7 @@ static void display_apply_rotation(esp_lcd_panel_handle_t panel, uint8_t rotatio
 }
 
 static esp_err_t display_panel_add(uint8_t eye_index) {
-  const int8_t cs_pin = eyeInfo[eye_index].select;
+  const int8_t cs_pin = display_panels[eye_index].cs_pin;
   if (cs_pin < 0) {
     return ESP_ERR_INVALID_ARG;
   }
@@ -120,7 +122,7 @@ static esp_err_t display_panel_add(uint8_t eye_index) {
   ESP_RETURN_ON_ERROR(esp_lcd_panel_init(s_panel[eye_index]), TAG, "panel init failed");
   ESP_RETURN_ON_ERROR(esp_lcd_panel_disp_on_off(s_panel[eye_index], true), TAG, "panel on failed");
 
-  display_apply_rotation(s_panel[eye_index], eyeInfo[eye_index].rotation);
+  display_apply_rotation(s_panel[eye_index], display_panels[eye_index].rotation);
   return ESP_OK;
 }
 

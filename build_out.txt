@@ -1,0 +1,76 @@
+﻿Executing action: all (aliases: build)
+Running ninja in directory F:\my_project\eyes\build
+Executing "ninja all"...
+[1/10] Performing build step for 'bootloader'
+
+[1/1] cmd.exe /C "cd /D F:\my_project\eyes\build\bootloader\esp-idf\esptool_py && C:\Users\heyj\.espressif\python_env\idf5.1_py3.10_env\Scripts\python.exe C:/Users/heyj/esp/v5.1.4/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 bootloader 0x0 F:/my_project/eyes/build/bootloader/bootloader.bin"
+
+
+Bootloader binary size 0x51c0 bytes. 0x2e40 bytes (36%) free.
+
+
+
+[2/8] Linking C static library esp-idf\arduino\libarduino.a
+
+[3/8] Building CXX object esp-idf/main/CMakeFiles/__idf_main.dir/display_port.cpp.obj
+
+FAILED: esp-idf/main/CMakeFiles/__idf_main.dir/display_port.cpp.obj 
+
+ccache C:\Users\heyj\.espressif\tools\xtensa-esp32s3-elf\esp-12.2.0_20230208\xtensa-esp32s3-elf\bin\xtensa-esp32s3-elf-g++.exe -DESP_MDNS_VERSION_NUMBER=\"\" -DESP_PLATFORM -DIDF_VER=\"v5.1.4\" -DMBEDTLS_CONFIG_FILE=\"mbedtls/esp_config.h\" -DSOC_MMU_PAGE_SIZE=CONFIG_MMU_PAGE_SIZE -D_GNU_SOURCE -D_POSIX_READER_WRITER_LOCKS -IF:/my_project/eyes/build/config -IF:/my_project/eyes/main -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/newlib/platform_include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/freertos/FreeRTOS-Kernel/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/freertos/FreeRTOS-Kernel/portable/xtensa/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/freertos/esp_additions/include/freertos -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/freertos/esp_additions/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/freertos/esp_additions/arch/xtensa/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/esp_hw_support/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/esp_hw_support/include/soc -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/esp_hw_support/include/soc/esp32s3 -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/esp_hw_support/port/esp32s3/. -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/heap/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/log/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/soc/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/soc/esp32s3 -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/soc/esp32s3/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/hal/esp32s3/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/hal/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/hal/platform_port/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/esp_rom/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/esp_rom/include/esp32s3 -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/esp_rom/esp32s3 -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/esp_common/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/esp_system/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/esp_system/port/soc -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/esp_system/port/include/private -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/xtensa/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/xtensa/esp32s3/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/lwip/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/lwip/include/apps -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/lwip/include/apps/sntp -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/lwip/lwip/src/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/lwip/port/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/lwip/port/freertos/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/lwip/port/esp32xx/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/lwip/port/esp32xx/include/arch -IF:/my_project/eyes/components/arduino/variants/esp32s3 -IF:/my_project/eyes/components/arduino/cores/esp32 -IF:/my_project/eyes/components/arduino/libraries/Adafruit_NeoPixel -IF:/my_project/eyes/components/arduino/libraries/TFT_eSPI -IF:/my_project/eyes/components/arduino/libraries/ArduinoOTA/src -IF:/my_project/eyes/components/arduino/libraries/AsyncUDP/src -IF:/my_project/eyes/components/arduino/libraries/BLE/src -IF:/my_project/eyes/components/arduino/libraries/BluetoothSerial/src -IF:/my_project/eyes/components/arduino/libraries/DNSServer/src -IF:/my_project/eyes/components/arduino/libraries/EEPROM/src -IF:/my_project/eyes/components/arduino/libraries/ESP_NOW/src -IF:/my_project/eyes/components/arduino/libraries/ESPmDNS/src -IF:/my_project/eyes/components/arduino/libraries/Ethernet/src -IF:/my_project/eyes/components/arduino/libraries/FFat/src -IF:/my_project/eyes/components/arduino/libraries/FS/src -IF:/my_project/eyes/components/arduino/libraries/HTTPClient/src -IF:/my_project/eyes/components/arduino/libraries/HTTPUpdate/src -IF:/my_project/eyes/components/arduino/libraries/Insights/src -IF:/my_project/eyes/components/arduino/libraries/LittleFS/src -IF:/my_project/eyes/components/arduino/libraries/NetBIOS/src -IF:/my_project/eyes/components/arduino/libraries/Network/src -IF:/my_project/eyes/components/arduino/libraries/OpenThread/src -IF:/my_project/eyes/components/arduino/libraries/PPP/src -IF:/my_project/eyes/components/arduino/libraries/Preferences/src -IF:/my_project/eyes/components/arduino/libraries/RainMaker/src -IF:/my_project/eyes/components/arduino/libraries/SD_MMC/src -IF:/my_project/eyes/components/arduino/libraries/SD/src -IF:/my_project/eyes/components/arduino/libraries/SimpleBLE/src -IF:/my_project/eyes/components/arduino/libraries/SPIFFS/src -IF:/my_project/eyes/components/arduino/libraries/SPI/src -IF:/my_project/eyes/components/arduino/libraries/Ticker/src -IF:/my_project/eyes/components/arduino/libraries/Update/src -IF:/my_project/eyes/components/arduino/libraries/USB/src -IF:/my_project/eyes/components/arduino/libraries/WebServer/src -IF:/my_project/eyes/components/arduino/libraries/NetworkClientSecure/src -IF:/my_project/eyes/components/arduino/libraries/WiFi/src -IF:/my_project/eyes/components/arduino/libraries/WiFiProv/src -IF:/my_project/eyes/components/arduino/libraries/Wire/src -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/spi_flash/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/esp_partition/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/mbedtls/port/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/mbedtls/mbedtls/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/mbedtls/mbedtls/library -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/mbedtls/esp_crt_bundle/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/mbedtls/mbedtls/3rdparty/everest/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/mbedtls/mbedtls/3rdparty/p256-m -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/mbedtls/mbedtls/3rdparty/p256-m/p256-m -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/wifi_provisioning/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/protocomm/include/common -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/protocomm/include/security -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/protocomm/include/transports -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/protocomm/include/crypto/srp6a -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/protocomm/proto-c -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/esp_timer/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/esp_wifi/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/esp_wifi/wifi_apps/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/esp_event/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/esp_phy/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/esp_phy/esp32s3/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/esp_netif/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/wpa_supplicant/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/wpa_supplicant/port/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/wpa_supplicant/esp_supplicant/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/esp_adc/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/esp_adc/interface -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/esp_adc/esp32s3/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/esp_adc/deprecated/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/esp_eth/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/driver/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/driver/deprecated -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/driver/analog_comparator/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/driver/dac/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/driver/gpio/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/driver/gptimer/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/driver/i2c/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/driver/i2s/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/driver/ledc/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/driver/mcpwm/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/driver/parlio/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/driver/pcnt/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/driver/rmt/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/driver/sdio_slave/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/driver/sdmmc/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/driver/sigma_delta/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/driver/spi/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/driver/temperature_sensor/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/driver/touch_sensor/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/driver/twai/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/driver/uart/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/driver/usb_serial_jtag/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/driver/touch_sensor/esp32s3/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/esp_pm/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/esp_ringbuf/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/http_parser -IF:/my_project/eyes/components/mdns/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/console -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/vfs/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/esp_https_ota/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/esp_http_client/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/bootloader_support/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/bootloader_support/bootloader_flash/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/esp_app_format/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/esp_lcd/include -IC:/Users/heyj/esp/v5.1.4/esp-idf/components/esp_lcd/interface -IF:/my_project/eyes/components/esp_lcd_gc9d01/include -mlongcalls  -fdiagnostics-color=always -ffunction-sections -fdata-sections -Wall -Werror=all -Wno-error=unused-function -Wno-error=unused-variable -Wno-error=unused-but-set-variable -Wno-error=deprecated-declarations -Wextra -Wno-unused-parameter -Wno-sign-compare -Wno-enum-conversion -gdwarf-4 -ggdb -O2 -fmacro-prefix-map=F:/my_project/eyes=. -fmacro-prefix-map=C:/Users/heyj/esp/v5.1.4/esp-idf=/IDF -fstrict-volatile-bitfields -fno-jump-tables -fno-tree-switch-conversion -DconfigENABLE_FREERTOS_DEBUG_OCDAWARE=1 -std=gnu++2b -fno-exceptions -fno-rtti -DARDUINO=10812 -DARDUINO_ESP32S3_DEV -DARDUINO_ARCH_ESP32 -DARDUINO_BOARD=\"ESP32S3_DEV\" -DARDUINO_VARIANT=\"esp32s3\" -DESP32 -MD -MT esp-idf/main/CMakeFiles/__idf_main.dir/display_port.cpp.obj -MF esp-idf\main\CMakeFiles\__idf_main.dir\display_port.cpp.obj.d -o esp-idf/main/CMakeFiles/__idf_main.dir/display_port.cpp.obj -c F:/my_project/eyes/main/display_port.cpp
+F:/my_project/eyes/main/display_port.cpp: In function 'void display_wait_tx_done()':
+F:/my_project/eyes/main/display_port.cpp:48:26: error: 'millis' was not declared in this scope
+   48 |   const uint32_t start = millis();
+      |                          ^~~~~~
+F:/my_project/eyes/main/display_port.cpp:54:5: error: 'yield' was not declared in this scope
+   54 |     yield();
+      |     ^~~~~
+F:/my_project/eyes/main/display_port.cpp: In function 'bool display_init()':
+F:/my_project/eyes/main/display_port.cpp:130:5: error: 'Serial' was not declared in this scope
+  130 |     Serial.println("display: DMA 缂撳啿鍒嗛厤澶辫触");
+      |     ^~~~~~
+F:/my_project/eyes/main/display_port.cpp:144:7: error: 'Serial' was not declared in this scope
+  144 |       Serial.println("display: SPI 鎬荤嚎鍒濆鍖栧け璐?);
+      |       ^~~~~~
+F:/my_project/eyes/main/display_port.cpp:152:7: error: 'Serial' was not declared in this scope
+  152 |       Serial.print("display: 闈㈡澘 #");
+
+      |       ^~~~~~
+
+ninja: build stopped: subcommand failed.
+
+C:\Users\heyj\.espressif\python_env\idf5.1_py3.10_env\Scripts\python.exe : Traceback (most recent call last):
+所在位置 C:\Users\heyj\AppData\Local\Temp\ps-script-8859d2c5-33e7-4825-aed6-19d2c1997d35.ps1:95 字符: 26
++ ... ject\eyes"; C:\Users\heyj\.espressif\python_env\idf5.1_py3.10_env\Scr ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Traceback (most recent call last)::String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  File "C:\Users\heyj\esp\v5.1.4\esp-idf\tools\idf.py", line 779, in <module>
+    main()
+  File "C:\Users\heyj\esp\v5.1.4\esp-idf\tools\idf.py", line 714, in main
+    cli(sys.argv[1:], prog_name=PROG, complete_var=SHELL_COMPLETE_VAR)
+  File "C:\Users\heyj\.espressif\python_env\idf5.1_py3.10_env\lib\site-packages\click\core.py", line 1161, in __call__
+    return self.main(*args, **kwargs)
+  File "C:\Users\heyj\.espressif\python_env\idf5.1_py3.10_env\lib\site-packages\click\core.py", line 1082, in main
+    rv = self.invoke(ctx)
+  File "C:\Users\heyj\.espressif\python_env\idf5.1_py3.10_env\lib\site-packages\click\core.py", line 1729, in invoke
+    return _process_result(rv)
+  File "C:\Users\heyj\.espressif\python_env\idf5.1_py3.10_env\lib\site-packages\click\core.py", line 1666, in _process_
+result
+    value = ctx.invoke(self._result_callback, value, **ctx.params)
+  File "C:\Users\heyj\.espressif\python_env\idf5.1_py3.10_env\lib\site-packages\click\core.py", line 788, in invoke
+    return __callback(*args, **kwargs)
+  File "C:\Users\heyj\esp\v5.1.4\esp-idf\tools\idf.py", line 611, in execute_tasks
+    task(ctx, global_args, task.action_args)
+  File "C:\Users\heyj\esp\v5.1.4\esp-idf\tools\idf.py", line 193, in __call__
+    self.callback(self.name, context, global_args, **action_args)
+  File "C:\Users\heyj\esp\v5.1.4\esp-idf\tools\idf_py_actions\core_ext.py", line 34, in build_target
+    run_target(target_name, args, force_progression=GENERATORS[args.generator].get('force_progression', False))
+  File "C:\Users\heyj\esp\v5.1.4\esp-idf\tools\idf_py_actions\tools.py", line 462, in run_target
+    RunTool(generator_cmd[0], generator_cmd + [target_name], args.build_dir, env, custom_error_handler, hints=not args.
+no_hints,
+  File "C:\Users\heyj\esp\v5.1.4\esp-idf\tools\idf_py_actions\tools.py", line 317, in __call__
+    for hint in generate_hints(stderr_output_file, stdout_output_file):
+  File "C:\Users\heyj\esp\v5.1.4\esp-idf\tools\idf_py_actions\tools.py", line 252, in generate_hints
+    yield from generate_hints_buffer(file.read(), hints)
+UnicodeDecodeError: 'gbk' codec can't decode byte 0xa7 in position 12138: illegal multibyte sequence
