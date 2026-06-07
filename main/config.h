@@ -24,7 +24,13 @@
 // ESP32-S3 默认：BL=35 DC=36 CS=TFT1_CS CLK=38 MOSI=39 RST=40
 #define LCD_WIDTH        160
 #define LCD_HEIGHT       160
+#if CONFIG_IDF_TARGET_ESP32C3
+// 双屏共享 SPI + 杜邦线：80MHz 会花屏/不显示，本板稳定上限 40MHz
+#define LCD_SPI_HZ       60000000
+#else
 #define LCD_SPI_HZ       80000000
+#endif
+// 背光有效电平：多数屏高电平点亮；若不亮可改为 LOW
 #define LCD_BACKLIGHT_ON HIGH
 
 #if CONFIG_IDF_TARGET_ESP32S3
@@ -35,11 +41,22 @@
 #define LCD_PIN_SCLK     38
 #define LCD_USE_SPI3_HOST 1
 #elif CONFIG_IDF_TARGET_ESP32C3
-#define LCD_PIN_BL       3
-#define LCD_PIN_DC       8
-#define LCD_PIN_RST      10
+// 双屏共享 SPI：SCLK=GPIO4 MOSI=GPIO6
 #define LCD_PIN_MOSI     6
 #define LCD_PIN_SCLK     4
+// 屏1：CS=7 DC=9 RST=3 BL=1
+#define TFT1_CS            7
+#define TFT1_DC            9
+#define TFT1_RST           3
+#define TFT1_BL            1
+// 屏2：CS=8 DC=10 RST=2 BL=0
+#define TFT2_CS            8
+#define TFT2_DC           10
+#define TFT2_RST           2
+#define TFT2_BL            0
+#define LCD_PIN_BL        TFT1_BL
+#define LCD_PIN_DC        TFT1_DC
+#define LCD_PIN_RST       TFT1_RST
 #else
 #define LCD_PIN_BL       35
 #define LCD_PIN_DC       36
@@ -48,11 +65,23 @@
 #define LCD_PIN_SCLK     38
 #endif
 
-#define DISPLAY_BACKLIGHT    LCD_PIN_BL   // -1 关闭背光控制
 #define BACKLIGHT_MAX        255
-#define BACKLIGHT_BRIGHTNESS 50
+#define BACKLIGHT_BRIGHTNESS 100
 
 // --- 屏上布局 / 片选 ---
+#if CONFIG_IDF_TARGET_ESP32C3
+#define TFT_COUNT          2
+#define TFT_1_ROT          0
+#define TFT_2_ROT          0   // 两块屏同向安装，勿用 3（会多转 90°）
+#define EYE_1_XPOSITION    0
+#define EYE_1_YPOSITION    0
+#define EYE_2_XPOSITION    0
+#define EYE_2_YPOSITION    0
+#define NUM_EYES           2
+#define DISPLAY_BACKLIGHT  -1   // 各眼独立背光，见 eyeInfo[].bl
+#define BLINK_PIN          -1
+#else
+#define DISPLAY_BACKLIGHT    LCD_PIN_BL   // -1 关闭背光控制
 #define TFT_COUNT          1
 #define TFT1_CS            37
 #define TFT2_CS            21
@@ -62,10 +91,9 @@
 #define EYE_1_YPOSITION    0
 #define EYE_2_XPOSITION    0
 #define EYE_2_YPOSITION    0
-
 #define NUM_EYES           1
-
 #define BLINK_PIN          47
+#endif
 #define LH_WINK_PIN        -1
 #define RH_WINK_PIN        -1
 

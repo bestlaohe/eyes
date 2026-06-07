@@ -141,6 +141,11 @@ void drawEye(
 
   uint16_t *strip = display_dma_strip();
   if (!strip) {
+    static bool s_warned = false;
+    if (!s_warned) {
+      ESP_LOGE(kEyeTag, "display_dma_strip 为空，无法刷屏");
+      s_warned = true;
+    }
     return;
   }
 

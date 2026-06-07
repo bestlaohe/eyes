@@ -22,7 +22,11 @@ static void fps_task(void *arg) {
     const uint32_t count = g_frame_count;
     const uint32_t fps = (count - last_count) / 2;
     last_count = count;
-    ESP_LOGI(TAG, "FPS: %lu (total=%lu)", (unsigned long)fps, (unsigned long)count);
+    ESP_LOGI(TAG,
+             "FPS: %lu (单眼帧/秒, 双眼各约 %lu, total=%lu)",
+             (unsigned long)fps,
+             (unsigned long)(NUM_EYES > 1 ? fps / NUM_EYES : fps),
+             (unsigned long)count);
   }
 }
 
@@ -34,17 +38,14 @@ void setup(void) {
   delay(100);
   ESP_LOGI(TAG, "boot [build: esp_lcd+fps100 COM12]");
 
-#if defined(DISPLAY_BACKLIGHT) && (DISPLAY_BACKLIGHT >= 0)
-  pinMode(DISPLAY_BACKLIGHT, OUTPUT);
-  digitalWrite(DISPLAY_BACKLIGHT, LOW);
-#endif
-
   if (!display_init()) {
     ESP_LOGE(TAG, "display_init failed");
+  } else {
+    display_backlight_init();
   }
-
 #if defined(DISPLAY_BACKLIGHT) && (DISPLAY_BACKLIGHT >= 0)
-  analogWrite(DISPLAY_BACKLIGHT, BACKLIGHT_BRIGHTNESS);
+  pinMode(DISPLAY_BACKLIGHT, OUTPUT);
+  digitalWrite(DISPLAY_BACKLIGHT, LCD_BACKLIGHT_ON);
 #endif
 
   randomSeed(esp_random());

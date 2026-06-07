@@ -9,6 +9,9 @@ typedef struct {
   uint8_t rotation;   // 屏幕旋转 0-3
   int16_t xposition;  // 眼睛图像 X 偏移
   int16_t yposition;  // 眼睛图像 Y 偏移
+  int8_t dc;          // 数据/命令引脚
+  int8_t rst;         // 复位引脚
+  int8_t bl;          // 背光引脚（-1 表示无）
 } eyeInfo_t;
 
 #include "config.h"
