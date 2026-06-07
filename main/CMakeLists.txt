@@ -13,6 +13,8 @@ set(GIF_MANIFEST "${CMAKE_SOURCE_DIR}/assets/salary_cat/manifest.json")
 set(GIF_CONFIG "${CMAKE_CURRENT_SOURCE_DIR}/config.h")
 
 file(GLOB GIF_VOL1_ASSETS "${CMAKE_SOURCE_DIR}/assets/salary_cat/vol1/*.gif")
+file(GLOB GIF_VOL2_ASSETS "${CMAKE_SOURCE_DIR}/assets/salary_cat/vol2/*.gif")
+file(GLOB GIF_VOL3_ASSETS "${CMAKE_SOURCE_DIR}/assets/salary_cat/vol3/*.gif")
 
 if(NOT PYTHON)
   if(DEFINED ENV{PYTHON})
@@ -30,8 +32,10 @@ add_custom_command(
     ${GIF_GEN_SCRIPT}
     ${GIF_MANIFEST}
     ${GIF_VOL1_ASSETS}
+    ${GIF_VOL2_ASSETS}
+    ${GIF_VOL3_ASSETS}
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-  COMMENT "Generate gif_frames from config.h GIF_CLIP_INDEX"
+  COMMENT "Generate gif_frames from config.h GIF_CLIP_VOL/INDEX"
   VERBATIM
 )
 

@@ -43,10 +43,13 @@
 #define NUM_EYES           1
 #define LH_WINK_PIN        -1
 
-// --- GIF 动图源：assets/salary_cat/vol1（改宏后 idf.py build 自动生成帧数据）---
+// --- GIF 动图源：assets/salary_cat（改宏后 idf.py build 自动生成帧数据）---
 #include "data/gif_catalog.h"
 
-#define GIF_CLIP_INDEX     GIF_VOL1_CRY
+#define GIF_CLIP_VOL       2          // 1/2/3 = vol1/vol2/vol3
+#define GIF_CLIP_INDEX     GIF_VOL2_00   
+// vol2：GIF_CLIP_VOL 2  +  GIF_CLIP_INDEX GIF_VOL2_00
+// vol3：GIF_CLIP_VOL 3  +  GIF_CLIP_INDEX GIF_VOL3_00
 
 #define GIF_DRAW_W         66
 #define GIF_DRAW_H         66

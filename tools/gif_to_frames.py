@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build GIF frame data (RGB565 in DRAM) for ESP32 gif_player from assets/salary_cat/vol1."""
+"""Build GIF frame data (RGB565) for ESP32 gif_player from assets/salary_cat."""
 
 from __future__ import annotations
 
@@ -12,11 +12,13 @@ from pathlib import Path
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parent.parent
-GIF_ASSET_DIR = ROOT / "assets" / "salary_cat" / "vol1"
+ASSET_ROOT = ROOT / "assets" / "salary_cat"
 DATA_DIR = ROOT / "main" / "data"
-MANIFEST = ROOT / "assets" / "salary_cat" / "manifest.json"
+MANIFEST = ASSET_ROOT / "manifest.json"
 CONFIG_H = ROOT / "main" / "config.h"
 CATALOG_H = DATA_DIR / "gif_catalog.h"
+
+SUPPORTED_VOLUMES = ("vol1", "vol2", "vol3")
 
 
 def rgb_to_rgb565(r: int, g: int, b: int) -> int:
@@ -34,53 +36,85 @@ def frame_to_rgb565(img: Image.Image) -> list[int]:
     return pixels
 
 
-def load_manifest_vol1() -> list[dict]:
-    data = json.loads(MANIFEST.read_text(encoding="utf-8"))
+def load_manifest() -> dict:
+    return json.loads(MANIFEST.read_text(encoding="utf-8"))
+
+
+def load_volume_items(volume: str) -> list[dict]:
+    data = load_manifest()
     for vol in data.get("volumes", []):
-        if vol.get("volume") == "vol1":
+        if vol.get("volume") == volume:
             return vol["items"]
-    raise ValueError(f"vol1 not found in {MANIFEST}")
+    raise ValueError(f"{volume} not found in {MANIFEST}")
 
 
-def vol1_gif_path(index: int) -> Path:
-    items = load_manifest_vol1()
-    if index < 0 or index >= len(items):
-        raise IndexError(f"vol1 clip index {index} out of range 0..{len(items) - 1}")
-    return ROOT / "assets" / "salary_cat" / items[index]["file"]
+def vol_tag(volume: str) -> str:
+    return volume.upper().replace("VOL", "VOL")
 
 
-def write_catalog_header() -> int:
-    items = load_manifest_vol1()
+def write_catalog_header() -> None:
     lines = [
         "#pragma once",
         "",
         "// 由 tools/gif_to_frames.py 根据 assets/salary_cat/manifest.json 生成",
-        f"#define GIF_VOL1_COUNT {len(items)}",
-        "",
     ]
-    for item in items:
-        idx = item["index"]
-        macro = f"GIF_VOL1_{idx:02d}"
-        lines.append(f"#define {macro} {idx}")
-        lines.append(f'#define {macro}_FILE "{item["file"]}"')
-    lines.append("")
-    lines.append("static const char *const GIF_VOL1_PATHS[GIF_VOL1_COUNT] = {")
-    for item in items:
-        lines.append(f'  "{item["file"]}",')
-    lines.append("};")
-    lines.append("")
+    for volume in SUPPORTED_VOLUMES:
+        try:
+            items = load_volume_items(volume)
+        except ValueError:
+            continue
+        tag = volume.upper()
+        lines.append(f"#define GIF_{tag}_COUNT {len(items)}")
+        lines.append("")
+        for item in items:
+            idx = item["index"]
+            macro = f"GIF_{tag}_{idx:02d}"
+            lines.append(f"#define {macro} {idx}")
+            lines.append(f'#define {macro}_FILE "{item["file"]}"')
+        lines.append("")
+        lines.append(f"static const char *const GIF_{tag}_PATHS[GIF_{tag}_COUNT] = {{")
+        for item in items:
+            lines.append(f'  "{item["file"]}",')
+        lines.append("};")
+        lines.append("")
+
+    vol1 = load_volume_items("vol1")
     cry_idx = next(
-        (item["index"] for item in items if item["file"] == "vol1/56_e0fd6e9a768f.gif"),
+        (item["index"] for item in vol1 if item["file"] == "vol1/56_e0fd6e9a768f.gif"),
         56,
     )
-    lines.append("#define GIF_VOL1_CRY  " + str(cry_idx))
+    lines.append(f"#define GIF_VOL1_CRY  {cry_idx}")
     lines.append("")
     CATALOG_H.write_text("\n".join(lines), encoding="utf-8")
-    print(f"Wrote {CATALOG_H.relative_to(ROOT)} ({len(items)} clips)")
-    return len(items)
+    print(f"Wrote {CATALOG_H.relative_to(ROOT)}")
 
 
-def read_clip_index_from_config() -> int | None:
+def catalog_macro_map() -> dict[str, tuple[str, int]]:
+    macros: dict[str, tuple[str, int]] = {}
+    if not CATALOG_H.exists():
+        return macros
+    for line in CATALOG_H.read_text(encoding="utf-8").splitlines():
+        mm = re.match(r"#define\s+(GIF_VOL(\d+)_\d+)\s+(\d+)", line)
+        if mm:
+            name = mm.group(1)
+            vol = f"vol{mm.group(2)}"
+            macros[name] = (vol, int(mm.group(3)))
+    macros["GIF_VOL1_CRY"] = ("vol1", 56)
+    return macros
+
+
+def read_clip_vol_from_config() -> str:
+    if not CONFIG_H.exists():
+        return "vol1"
+    text = CONFIG_H.read_text(encoding="utf-8")
+    m = re.search(r"^#define\s+GIF_CLIP_VOL\s+(\d+)", text, re.MULTILINE)
+    if m:
+        n = int(m.group(1))
+        return f"vol{n}"
+    return "vol1"
+
+
+def read_clip_index_from_config(volume: str) -> int | None:
     if not CONFIG_H.exists():
         return None
     text = CONFIG_H.read_text(encoding="utf-8")
@@ -90,14 +124,11 @@ def read_clip_index_from_config() -> int | None:
     token = m.group(1)
     if token.isdigit():
         return int(token)
-    if CATALOG_H.exists():
-        macros = {}
-        for line in CATALOG_H.read_text(encoding="utf-8").splitlines():
-            mm = re.match(r"#define\s+(GIF_VOL1_[A-Z0-9_]+)\s+(\d+)", line)
-            if mm:
-                macros[mm.group(1)] = int(mm.group(2))
-        if token in macros:
-            return macros[token]
+    macros = catalog_macro_map()
+    if token in macros:
+        vol, idx = macros[token]
+        if vol == volume:
+            return idx
     return None
 
 
@@ -107,6 +138,14 @@ def read_int_macro(name: str, default: int) -> int:
     text = CONFIG_H.read_text(encoding="utf-8")
     m = re.search(rf"^#define\s+{name}\s+(\d+)", text, re.MULTILINE)
     return int(m.group(1)) if m else default
+
+
+def clip_path(volume: str, index: int) -> tuple[Path, str]:
+    items = load_volume_items(volume)
+    if index < 0 or index >= len(items):
+        raise IndexError(f"{volume} clip index {index} out of range 0..{len(items) - 1}")
+    rel = items[index]["file"]
+    return ASSET_ROOT / rel, rel
 
 
 def extract_frames(im: Image.Image, width: int, height: int, step: int) -> list[list[int]]:
@@ -128,6 +167,7 @@ def convert_gif(
     height: int,
     step: int,
     max_dram_kb: int = 240,
+    volume: str = "vol1",
     clip_index: int | None = None,
     clip_source: str | None = None,
 ) -> int:
@@ -168,9 +208,13 @@ def convert_gif(
         "#include <stdint.h>",
         "",
         f"// source: {clip_source or gif_path.name}",
+        f'#define GIF_ACTIVE_CLIP_VOL "{volume}"',
+        f"#define GIF_ACTIVE_CLIP_VOL_NUM {volume[3:]}",
     ]
     if clip_index is not None:
         meta.append(f"#define GIF_ACTIVE_CLIP_INDEX {clip_index}")
+    if clip_source:
+        meta.append(f'#define GIF_ACTIVE_CLIP_FILE "{clip_source}"')
     fps_x10 = (10000 + frame_ms // 2) // frame_ms if frame_ms else 0
     meta.extend(
         [
@@ -213,7 +257,7 @@ def convert_gif(
 
     total_kb = len(frames) * width * height * 2 // 1024
     print(
-        f"Wrote {header.name}, {inc.name}: clip={clip_index} "
+        f"Wrote {header.name}, {inc.name}: {volume} clip={clip_index} "
         f"{len(frames)} frames {width}x{height} step={step} "
         f"{frame_ms}ms {fps_x10 / 10:.1f}fps, {total_kb} KB"
     )
@@ -222,8 +266,9 @@ def convert_gif(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--gif", type=Path, default=None, help="assets/salary_cat/vol1 下的 GIF")
-    parser.add_argument("--vol1-index", type=int, default=None, help="vol1 index 0..61")
+    parser.add_argument("--gif", type=Path, default=None, help="assets/salary_cat 下的 GIF")
+    parser.add_argument("--volume", type=str, default=None, choices=SUPPORTED_VOLUMES)
+    parser.add_argument("--index", type=int, default=None, help="卷内序号")
     parser.add_argument("--gen-catalog", action="store_true", help="only regenerate gif_catalog.h")
     parser.add_argument("--width", type=int, default=None)
     parser.add_argument("--height", type=int, default=None)
@@ -241,32 +286,36 @@ def main() -> int:
 
     write_catalog_header()
 
-    clip_index: int | None = args.vol1_index
+    volume = args.volume or read_clip_vol_from_config()
+    if volume not in SUPPORTED_VOLUMES:
+        print(f"Unsupported volume: {volume}", file=sys.stderr)
+        return 1
+
+    clip_index = args.index
     gif_path = args.gif
     clip_source: str | None = None
 
     if clip_index is None:
-        clip_index = read_clip_index_from_config()
+        clip_index = read_clip_index_from_config(volume)
 
     if gif_path is not None:
         gif_path = gif_path if gif_path.is_absolute() else ROOT / gif_path
         try:
-            rel = gif_path.relative_to(GIF_ASSET_DIR)
+            rel = gif_path.relative_to(ASSET_ROOT)
         except ValueError:
-            print(f"Only GIFs under {GIF_ASSET_DIR} are supported.", file=sys.stderr)
+            print(f"Only GIFs under {ASSET_ROOT} are supported.", file=sys.stderr)
             return 1
-        gif_path = GIF_ASSET_DIR / rel
-        clip_source = f"vol1/{rel.as_posix()}"
-        for item in load_manifest_vol1():
+        clip_source = rel.as_posix()
+        volume = clip_source.split("/")[0]
+        for item in load_volume_items(volume):
             if item["file"] == clip_source:
                 clip_index = item["index"]
                 break
+        gif_path = ASSET_ROOT / rel
     elif clip_index is not None:
-        items = load_manifest_vol1()
-        gif_path = vol1_gif_path(clip_index)
-        clip_source = items[clip_index]["file"]
+        gif_path, clip_source = clip_path(volume, clip_index)
     else:
-        print("Set GIF_CLIP_INDEX in main/config.h (e.g. GIF_VOL1_CRY).", file=sys.stderr)
+        print("Set GIF_CLIP_VOL + GIF_CLIP_INDEX in main/config.h.", file=sys.stderr)
         return 1
 
     return convert_gif(
@@ -275,6 +324,7 @@ def main() -> int:
         height=height,
         step=step,
         max_dram_kb=max_dram_kb,
+        volume=volume,
         clip_index=clip_index,
         clip_source=clip_source,
     )

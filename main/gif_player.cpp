@@ -16,6 +16,9 @@ static uint32_t s_last_step_ms = 0;
 static uint32_t s_fps_log_ms   = 0;
 static uint32_t s_draw_count   = 0;
 
+#if defined(GIF_ACTIVE_CLIP_VOL_NUM) && (GIF_CLIP_VOL != GIF_ACTIVE_CLIP_VOL_NUM)
+#warning "config.h GIF_CLIP_VOL 与帧数据不一致，请重新 idf.py build"
+#endif
 #if defined(GIF_ACTIVE_CLIP_INDEX) && (GIF_CLIP_INDEX != GIF_ACTIVE_CLIP_INDEX)
 #warning "config.h GIF_CLIP_INDEX 与帧数据不一致，请重新 idf.py build"
 #endif
@@ -73,10 +76,10 @@ void gif_player_init(void) {
   s_draw_count   = 0;
   gif_player_draw(0);
   ESP_LOGI(TAG,
-           "clip %d/%d %s: %d frames %dx%d, step %d, %dms, %.1f fps",
+           "%s clip %d: %s, %d frames %dx%d, step %d, %dms, %.1f fps",
+           GIF_ACTIVE_CLIP_VOL,
            GIF_ACTIVE_CLIP_INDEX,
-           GIF_VOL1_COUNT,
-           GIF_VOL1_PATHS[GIF_ACTIVE_CLIP_INDEX],
+           GIF_ACTIVE_CLIP_FILE,
            GIF_FRAME_COUNT,
            GIF_FRAME_W,
            GIF_FRAME_H,
