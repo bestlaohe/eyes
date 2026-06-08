@@ -233,6 +233,15 @@ void updateEye (void)
 #ifdef LIGHT_PIN_FLIP
   adj = (int)LIGHT_ADC_MAX - raw;
 #endif
+#if defined(LIGHT_CAL_LO) && defined(LIGHT_CAL_HI)
+  if ((int)LIGHT_CAL_HI > (int)LIGHT_CAL_LO) {
+    adj = (int)map((long)adj,
+                   (long)LIGHT_CAL_LO,
+                   (long)LIGHT_CAL_HI,
+                   0L,
+                   (long)LIGHT_ADC_MAX);
+  }
+#endif
   if (adj < (int)LIGHT_MIN) {
     adj = (int)LIGHT_MIN;
   } else if (adj > (int)LIGHT_MAX) {
@@ -243,12 +252,12 @@ void updateEye (void)
 #ifdef LIGHT_CURVE
   v = (int)(pow((double)v / (double)light_span, LIGHT_CURVE) * (double)light_span);
 #endif
-  // 亮(adj 高)→IRIS_MIN 小瞳孔；暗(adj 低)→IRIS_MAX 大瞳孔（配合 LIGHT_PIN_FLIP）
+  // ADC 高(亮)→IRIS_MIN 小瞳孔；ADC 低(暗)→IRIS_MAX 大瞳孔
   v = (int)map((long)v, 0L, (long)light_span, (long)IRIS_MAX, (long)IRIS_MIN);
   int iris_out = v;
 #ifdef IRIS_SMOOTH
   static int irisValue = (IRIS_MIN + IRIS_MAX) / 2;
-  irisValue            = ((irisValue * 3) + v) / 4; // 比 15/16 跟手更快
+  irisValue            = ((irisValue * 1) + v) / 2;
   iris_out             = irisValue;
 #endif
   frame((uint16_t)iris_out);

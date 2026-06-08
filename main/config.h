@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "sdkconfig.h"
 
@@ -16,6 +16,10 @@
 // #include "data/newtEye.h"        // 蝾螈眼
 // #include "data/terminatorEye.h"  // 终结者红眼
 #include "data/catEye.h"         // 卡通猫眼（平面色）
+#undef IRIS_MIN
+#undef IRIS_MAX
+#define IRIS_MIN           18     // 最亮：再小(≈16)会看不见瞳孔
+#define IRIS_MAX           34     // 最暗：实测刚好合适
 // #include "data/owlEye.h"         // 猫头鹰 Minerva（建议关 TRACKING，头文件内 EYE_NO_TRACKING）
 // #include "data/naugaEye.h"       // Nauga 眼球（建议关 TRACKING）
 // #include "data/doeEye.h"         // 卡通鹿眼（建议关 TRACKING）
@@ -112,7 +116,8 @@
 #else
 #define LIGHT_PIN          8
 #endif
-#define LIGHT_PIN_FLIP     // 亮→瞳孔缩小，暗→瞳孔放大
+// 亮→瞳孔小、暗→瞳孔大（与真人一致）。若方向反了再取消下行注释：
+// #define LIGHT_PIN_FLIP
 #define LIGHT_LOG_MS       1000   // 串口打印光敏 ADC，0=关闭
 
 // 常态最小眼皮阈值（0=完全睁开，约 128=半闭）；160 屏略保留上眼皮更自然
@@ -121,10 +126,13 @@
 #endif
 
 #define LIGHT_ADC_MAX      4095   // ESP32 Arduino analogRead 为 12 位
-#define LIGHT_CURVE        0.33
+#define LIGHT_CURVE        2.5     // >1 拉大亮暗对比，瞳孔变化更明显
 #define LIGHT_MIN          0
 #define LIGHT_MAX          LIGHT_ADC_MAX
-#define IRIS_SMOOTH
+// 把实测 raw 区间拉伸到满量程（按串口 raw 改，覆盖你手电/遮光范围）
+#define LIGHT_CAL_LO       2000
+#define LIGHT_CAL_HI       4100
+// #define IRIS_SMOOTH      // 光敏控瞳孔时关闭平滑，跟手更快
 
 // 平面色眼换虹膜色（catEye 等，把纹理里的纯色换成新颜色）
 // RGB565 常用值：0xFFE0黄 0xF800红 0x07E0绿 0x001F蓝 0xFD20橙 0x780F紫
@@ -132,9 +140,3 @@
 #define IRIS_COLOR       0x07E0
 #define IRIS_COLOR_FROM  0xFFE0   // catEye 默认黄，一般不用改
 
-#if !defined(IRIS_MIN)
-#define IRIS_MIN           90
-#endif
-#if !defined(IRIS_MAX)
-#define IRIS_MAX           130
-#endif
