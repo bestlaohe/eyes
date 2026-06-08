@@ -70,15 +70,15 @@
 
 // --- 屏上布局 / 片选 ---
 #if CONFIG_IDF_TARGET_ESP32C3
-#define TFT_COUNT          2
+#define TFT_COUNT          1
 #define TFT_1_ROT          0
-#define TFT_2_ROT          0   // 两块屏同向安装，勿用 3（会多转 90°）
+#define TFT_2_ROT          0
 #define EYE_1_XPOSITION    0
 #define EYE_1_YPOSITION    0
 #define EYE_2_XPOSITION    0
 #define EYE_2_YPOSITION    0
-#define NUM_EYES           2
-#define DISPLAY_BACKLIGHT  -1   // 各眼独立背光，见 eyeInfo[].bl
+#define NUM_EYES           1
+#define DISPLAY_BACKLIGHT  TFT1_BL
 #define BLINK_PIN          -1
 #else
 #define DISPLAY_BACKLIGHT    LCD_PIN_BL   // -1 关闭背光控制

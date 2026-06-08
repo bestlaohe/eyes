@@ -11,8 +11,9 @@
 # Keep: sdkconfig.defaults, dependencies.lock, partitions.csv
 
 # --- IDE & editor ---
-.vscode/
+.vscode/*
 !.vscode/extensions.json
+!.vscode/settings.json
 .idea/
 *.code-workspace
 .cache/

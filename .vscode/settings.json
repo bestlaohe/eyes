@@ -1,0 +1,21 @@
+{
+  "idf.currentSetup": "C:\\Users\\heyj\\esp\\v5.1.4\\esp-idf",
+  "idf.portWin": "COM8",
+  "idf.espIdfPathWin": "C:\\Users\\heyj\\esp\\v5.1.4\\esp-idf",
+  "idf.toolsPathWin": "C:\\Users\\heyj\\.espressif",
+  "idf.pythonInstallPath": "C:\\Users\\heyj\\.espressif\\tools\\idf-python\\3.11.2\\python.exe",
+  "idf.flashType": "UART",
+  "idf.monitorBaudRate": "115200",
+  "idf.customExtraVars": {
+    "IDF_TARGET": "esp32c3"
+  },
+  "clangd.path": "C:\\Users\\heyj\\.espressif\\tools\\esp-clang\\15.0.0-23786128ae\\esp-clang\\bin\\clangd.exe",
+  "clangd.arguments": [
+    "--background-index",
+    "--query-driver=**",
+    "--compile-commands-dir=f:\\my_project\\eyes\\build"
+  ],
+  "idf.openOcdConfigs": [
+    "board/esp32c3-ftdi.cfg"
+  ]
+}
