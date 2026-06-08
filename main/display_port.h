@@ -16,6 +16,8 @@ static inline uint16_t rgb565_to_panel(uint16_t c) {
 
 bool display_init(void);
 void display_fill_black(uint8_t eye_index);
+void display_fill_rect(uint8_t eye_index, int16_t x, int16_t y,
+                       int16_t w, int16_t h, uint16_t color);
 
 uint16_t *display_dma_strip(void);
 int display_dma_strip_rows(void);

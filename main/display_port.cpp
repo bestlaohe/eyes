@@ -163,17 +163,29 @@ bool display_init(void) {
   return true;
 }
 
-void display_fill_black(uint8_t eye_index) {
-  if (eye_index >= NUM_EYES || !s_panel[eye_index] || !s_dma_buf) {
+void display_fill_rect(uint8_t eye_index, int16_t x, int16_t y,
+                       int16_t w, int16_t h, uint16_t color) {
+  if (eye_index >= NUM_EYES || !s_panel[eye_index] || !s_dma_buf || w <= 0 || h <= 0) {
     return;
   }
 
-  memset(s_dma_buf, 0, kBandBytes);
-  for (int16_t y = 0; y < LCD_HEIGHT; y += kBlitBandRows) {
-    const int16_t h = (int16_t)((y + kBlitBandRows <= LCD_HEIGHT) ? kBlitBandRows
-                                                                  : (LCD_HEIGHT - y));
-    display_blit_rgb565(eye_index, 0, y, LCD_WIDTH, h, s_dma_buf);
+  for (int16_t bandY = 0; bandY < h; bandY += kBlitBandRows) {
+    const int16_t bandH =
+        (int16_t)((bandY + kBlitBandRows <= h) ? kBlitBandRows : (h - bandY));
+    const size_t count = (size_t)w * (size_t)bandH;
+    if (color == 0) {
+      memset(s_dma_buf, 0, count * sizeof(uint16_t));
+    } else {
+      for (size_t i = 0; i < count; i++) {
+        s_dma_buf[i] = color;
+      }
+    }
+    display_blit_rgb565(eye_index, x, (int16_t)(y + bandY), w, bandH, s_dma_buf);
   }
+}
+
+void display_fill_black(uint8_t eye_index) {
+  display_fill_rect(eye_index, 0, 0, LCD_WIDTH, LCD_HEIGHT, 0);
 }
 
 void display_blit_rgb565(uint8_t eye_index, int16_t x, int16_t y,

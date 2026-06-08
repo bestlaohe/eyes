@@ -57,3 +57,4 @@
 #define GIF_FRAMES_IN_PSRAM 0
 #define GIF_MAX_DRAM_KB    260
 #define GIF_FPS_LOG_MS     1000
+#define GIF_CLEAR_PAD      10        // 每帧绘制前向四周多清一圈，避免边缘残影
