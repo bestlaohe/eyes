@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "sdkconfig.h"
 
@@ -103,14 +103,27 @@
 #define TRACKING
 #define AUTOBLINK
 
+// --- 光敏电阻 GT36516（与 10kΩ 组成分压，控制瞳孔）---
+// 接法：3.3V — 光敏 — GPIO — 10kΩ — GND（光敏与 10k 并联时视情况用 LIGHT_PIN_FLIP）
+#if CONFIG_IDF_TARGET_ESP32C3
+// C3 仅 GPIO0~4 有 ADC；光敏焊在 GPIO8 时，用杜邦线把 GPIO8 与 GPIO0 短接即可
+#define LIGHT_PIN          0      // analogRead 用这根（ADC）
+#define LIGHT_PIN_BRIDGE   8      // 光敏实际焊盘；高阻 INPUT，不驱动，与 GPIO0 短接
+#else
+#define LIGHT_PIN          8
+#endif
+#define LIGHT_PIN_FLIP     // 亮→瞳孔缩小，暗→瞳孔放大
+#define LIGHT_LOG_MS       1000   // 串口打印光敏 ADC，0=关闭
+
 // 常态最小眼皮阈值（0=完全睁开，约 128=半闭）；160 屏略保留上眼皮更自然
 #if LCD_WIDTH > SCREEN_WIDTH
 #define EYELID_REST_U 88
 #endif
 
+#define LIGHT_ADC_MAX      4095   // ESP32 Arduino analogRead 为 12 位
 #define LIGHT_CURVE        0.33
 #define LIGHT_MIN          0
-#define LIGHT_MAX          1023
+#define LIGHT_MAX          LIGHT_ADC_MAX
 #define IRIS_SMOOTH
 
 // 平面色眼换虹膜色（catEye 等，把纹理里的纯色换成新颜色）

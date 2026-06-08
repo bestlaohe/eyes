@@ -22,11 +22,18 @@ static void fps_task(void *arg) {
     const uint32_t count = g_frame_count;
     const uint32_t fps = (count - last_count) / 2;
     last_count = count;
+#if NUM_EYES > 1
     ESP_LOGI(TAG,
-             "FPS: %lu (单眼帧/秒, 双眼各约 %lu, total=%lu)",
+             "FPS: %lu (绘制调用/秒, 每只眼约 %lu Hz, total=%lu)",
              (unsigned long)fps,
-             (unsigned long)(NUM_EYES > 1 ? fps / NUM_EYES : fps),
+             (unsigned long)(fps / NUM_EYES),
              (unsigned long)count);
+#else
+    ESP_LOGI(TAG,
+             "FPS: %lu (屏刷新/秒, total=%lu)",
+             (unsigned long)fps,
+             (unsigned long)count);
+#endif
   }
 }
 

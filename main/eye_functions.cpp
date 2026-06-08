@@ -121,6 +121,21 @@ void initEyes(void)
 #if defined(BLINK_PIN) && (BLINK_PIN >= 0)
   pinMode(BLINK_PIN, INPUT_PULLUP);
 #endif
+
+#if defined(LIGHT_PIN) && (LIGHT_PIN >= 0)
+  analogReadResolution(12);
+  pinMode(LIGHT_PIN, INPUT);
+#if defined(LIGHT_PIN_BRIDGE) && (LIGHT_PIN_BRIDGE >= 0) && (LIGHT_PIN_BRIDGE != LIGHT_PIN)
+  pinMode(LIGHT_PIN_BRIDGE, INPUT); // 与 LIGHT_PIN 短接，高阻不驱动
+  ESP_LOGI(kEyeTag,
+           "光敏 GT36516: GPIO%d(ADC) ←短接→ GPIO%d, 量程 0~%d",
+           LIGHT_PIN,
+           LIGHT_PIN_BRIDGE,
+           (int)LIGHT_ADC_MAX);
+#else
+  ESP_LOGI(kEyeTag, "光敏 GT36516 @ GPIO%d (ADC 0~%d)", LIGHT_PIN, (int)LIGHT_ADC_MAX);
+#endif
+#endif
 }
 
 // 渲染单眼 --------------------------------------------------------------
@@ -213,26 +228,48 @@ void updateEye (void)
 {
 #if defined(LIGHT_PIN) && (LIGHT_PIN >= 0) // 光敏/电位器控制瞳孔
 
-  int16_t v = analogRead(LIGHT_PIN);       // 传感器原始读数
+  const int raw = analogRead(LIGHT_PIN);
+  int adj       = raw;
 #ifdef LIGHT_PIN_FLIP
-  v = 1023 - v;                            // 反转传感器方向
+  adj = (int)LIGHT_ADC_MAX - raw;
 #endif
-  if (v < LIGHT_MIN)      v = LIGHT_MIN; // 限制传感器读数范围
-  else if (v > LIGHT_MAX) v = LIGHT_MAX;
-  v -= LIGHT_MIN;  // 归一化到 0 ~ (LIGHT_MAX - LIGHT_MIN)
-#ifdef LIGHT_CURVE  // 对传感器输入做伽马曲线
-  v = (int16_t)(pow((double)v / (double)(LIGHT_MAX - LIGHT_MIN),
-                    LIGHT_CURVE) * (double)(LIGHT_MAX - LIGHT_MIN));
+  if (adj < (int)LIGHT_MIN) {
+    adj = (int)LIGHT_MIN;
+  } else if (adj > (int)LIGHT_MAX) {
+    adj = (int)LIGHT_MAX;
+  }
+  int v = adj - (int)LIGHT_MIN;
+  const int light_span = (int)LIGHT_MAX - (int)LIGHT_MIN;
+#ifdef LIGHT_CURVE
+  v = (int)(pow((double)v / (double)light_span, LIGHT_CURVE) * (double)light_span);
 #endif
-  // 映射到瞳孔尺寸范围（IRIS_MAX 对应最亮时的大小）
-  v = map(v, 0, (LIGHT_MAX - LIGHT_MIN), IRIS_MAX, IRIS_MIN);
-#ifdef IRIS_SMOOTH // 平滑滤波，瞳孔变化更平缓
-  static int16_t irisValue = (IRIS_MIN + IRIS_MAX) / 2;
-  irisValue = ((irisValue * 15) + v) / 16;
-  frame(irisValue);
-#else // 无滤波，立即跟随
-  frame(v);
-#endif // IRIS_SMOOTH
+  // 亮(adj 高)→IRIS_MIN 小瞳孔；暗(adj 低)→IRIS_MAX 大瞳孔（配合 LIGHT_PIN_FLIP）
+  v = (int)map((long)v, 0L, (long)light_span, (long)IRIS_MAX, (long)IRIS_MIN);
+  int iris_out = v;
+#ifdef IRIS_SMOOTH
+  static int irisValue = (IRIS_MIN + IRIS_MAX) / 2;
+  irisValue            = ((irisValue * 3) + v) / 4; // 比 15/16 跟手更快
+  iris_out             = irisValue;
+#endif
+  frame((uint16_t)iris_out);
+
+#if defined(LIGHT_LOG_MS) && (LIGHT_LOG_MS > 0)
+  {
+    static uint32_t s_light_log_ms = 0;
+    const uint32_t now             = millis();
+    if (now - s_light_log_ms >= (uint32_t)LIGHT_LOG_MS) {
+      s_light_log_ms = now;
+      ESP_LOGI(kEyeTag,
+               "光敏 raw=%d adj=%d target=%d iris=%d [%d..%d]",
+               raw,
+               adj,
+               v,
+               iris_out,
+               (int)IRIS_MIN,
+               (int)IRIS_MAX);
+    }
+  }
+#endif
 
 #else  // 自动瞳孔缩放：非阻塞状态机，每帧更新（替代阻塞式 split()）
 
